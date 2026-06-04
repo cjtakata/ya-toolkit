@@ -1,7 +1,10 @@
 import { requireAuth } from './_lib/auth.js'
 import { pcoFetch, pcoFetchAll, getFieldDefinitions, avatarColor, calcAge, fmtSince } from './_lib/pco.js'
 
-// YA Status values that belong in the app
+// YA Status values shown in the app's care list.
+// Active = engaged, Missing = drifted but still pursuing,
+// TBD = under evaluation / not yet categorised.
+// Friend, Alumni, Moved On are excluded (they drop off the care list).
 const ACTIVE_STATUSES = new Set(['Active', 'Missing', 'TBD'])
 
 // Infer which crew group a person belongs to based on age.

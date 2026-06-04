@@ -362,6 +362,7 @@ body {
 /* YA Status tags */
 .badge-status-active   { background: #d1fae5; color: #059669; }
 .badge-status-missing  { background: #fef3c7; color: #b45309; }
+.badge-status-tbd      { background: #f3e8ff; color: #7e22ce; }
 .badge-status-friend   { background: #e0f2fe; color: #0284c7; }
 .badge-status-alumni   { background: #ede9fe; color: #7c3aed; }
 .badge-status-movedon  { background: #f3f4f6; color: #6b7280; }

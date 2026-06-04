@@ -3,6 +3,7 @@
 const STATUS_CLASS = {
   active:  'badge-status-active',
   missing: 'badge-status-missing',
+  tbd:     'badge-status-tbd',
   friend:  'badge-status-friend',
   alumni:  'badge-status-alumni',
   movedon: 'badge-status-movedon',
