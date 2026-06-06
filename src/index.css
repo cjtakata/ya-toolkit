@@ -567,6 +567,38 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
   white-space: pre-wrap; word-break: break-word;
 }
 
+/* ── Log Follow-Up card ───────────────────────────────────── */
+.fu-card {
+  border: 1.5px solid #fcd34d; background: #fffbeb;
+  border-radius: 10px; padding: 14px; margin: 12px 0;
+}
+.fu-head { display: flex; align-items: flex-start; gap: 8px; }
+.fu-icon { width: 22px; height: 22px; flex-shrink: 0; color: #b45309; }
+.fu-title { font-size: 13px; font-weight: 700; color: #b45309; }
+.fu-sub { font-size: 12px; color: #b45309; opacity: .8; margin-top: 1px; line-height: 1.4; }
+.fu-compose { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.fu-textarea {
+  border: 1.5px solid #fcd34d; border-radius: 8px; padding: 8px 12px;
+  font-size: 13px; font-family: inherit; background: #fff; color: var(--text);
+  outline: none; resize: none; line-height: 1.45; width: 100%;
+  height: 38px; min-height: 38px; overflow: hidden;
+}
+.fu-textarea:focus { border-color: var(--warning); }
+.fu-log {
+  width: 100%; background: var(--warning); color: #fff; border: none;
+  border-radius: 8px; padding: 10px; font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: inherit; transition: background .15s;
+}
+.fu-log:hover:not(:disabled) { background: #d97706; }
+.fu-log:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Follow-up entry in the notes feed */
+.note-avatar-fu { background: #16a34a; }
+.note-fu-tag {
+  font-size: 10px; font-weight: 600; padding: 1px 7px;
+  border-radius: 20px; background: #dcfce7; color: #15803d;
+}
+
 .unsaved-dot {
   width: 7px; height: 7px; border-radius: 50%; background: var(--warning);
   display: none;

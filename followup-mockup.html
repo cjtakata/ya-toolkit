@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Log Follow-Up — Mockup</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:#f8f9fb; --surface:#fff; --border:#e2e6ea; --text:#1a1d23; --muted:#6b7280;
+      --primary:#4f46e5; --primary-light:#eef2ff; --success:#10b981; --warning:#f59e0b;
+      --earlycareer:#8b5cf6; --earlycareer-bg:#ede9fe;
+      --shadow-lg:0 8px 32px rgba(0,0,0,.12);
+    }
+    body {
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+      background:var(--bg); color:var(--text); min-height:100vh;
+      display:flex; align-items:flex-start; justify-content:center; padding:32px 16px 64px;
+    }
+
+    .detail-pane {
+      width:380px; background:var(--surface); border:1px solid var(--border);
+      border-radius:14px; box-shadow:var(--shadow-lg); display:flex; flex-direction:column; overflow:hidden;
+    }
+    .detail-header { padding:20px 20px 16px; border-bottom:1px solid var(--border); display:flex; flex-direction:column; gap:12px; }
+    .detail-person { display:flex; align-items:center; gap:12px; }
+    .detail-avatar { width:52px; height:52px; border-radius:50%; font-size:20px; font-weight:700; color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .detail-name { font-size:18px; font-weight:800; letter-spacing:-.3px; }
+    .detail-email { display:block; font-size:12px; color:var(--muted); margin-top:2px; }
+    .badge { font-size:11px; font-weight:600; padding:2px 7px; border-radius:20px; white-space:nowrap; }
+    .badge-early { background:var(--earlycareer-bg); color:var(--earlycareer); }
+    .badge-ftg   { background:#ffe4e6; color:#e11d48; }
+    .pco-link { font-size:12px; color:var(--primary); text-decoration:none; background:var(--primary-light); border-radius:6px; padding:4px 10px; font-weight:600; }
+
+    .detail-body { padding:20px; display:flex; flex-direction:column; gap:20px; }
+    .field-section-title { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.07em; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; }
+    .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .info-item { background:var(--bg); border-radius:8px; padding:10px 12px; }
+    .info-item-label { font-size:11px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.05em; }
+    .info-item-value { font-size:14px; font-weight:600; margin-top:3px; }
+
+    .field-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border); }
+    .field-label { font-size:14px; font-weight:500; }
+    .field-sub { font-size:12px; color:var(--muted); margin-top:2px; }
+    .toggle { width:42px; height:24px; border-radius:12px; border:none; cursor:pointer; position:relative; transition:background .2s; flex-shrink:0; }
+    .toggle::after { content:''; position:absolute; top:3px; width:18px; height:18px; border-radius:50%; background:#fff; transition:left .2s; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+    .toggle.on { background:var(--success); } .toggle.on::after { left:21px; }
+    .toggle.off { background:var(--border); } .toggle.off::after { left:3px; }
+    .field-stack-wrap { padding:12px 0; border-bottom:1px solid var(--border); }
+    .field-stack-wrap:last-child { border-bottom:none; }
+    .field-stack { display:flex; flex-direction:column; gap:6px; }
+    .field-select { border:1.5px solid var(--border); border-radius:8px; padding:8px 12px; font-size:14px; font-family:inherit; background:var(--bg); color:var(--text); outline:none; width:100%; }
+
+    /* ── Follow-Up card ─────────────────────────────────────── */
+    .fu-card { border-radius:10px; border:1.5px solid #fcd34d; background:#fffbeb; padding:14px; overflow:hidden; margin:12px 0; }
+    .fu-card.removing { opacity:0; max-height:0; padding-top:0; padding-bottom:0; margin:0; border-width:0; transition:all .35s ease; }
+    .fu-head { display:flex; align-items:center; gap:8px; }
+    .fu-icon { width:22px; height:22px; flex-shrink:0; color:#b45309; }
+    .fu-card.done .fu-icon { color:#15803d; }
+    .fu-title { font-size:13px; font-weight:700; color:#b45309; }
+    .fu-card.done .fu-title { color:#15803d; }
+    .fu-sub { font-size:12px; color:#b45309; opacity:.8; margin-top:1px; }
+    .fu-card.done .fu-sub { color:#15803d; }
+
+    .fu-btn { margin-top:12px; width:100%; background:var(--warning); color:#fff; border:none; border-radius:8px; padding:10px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; transition:background .15s; }
+    .fu-btn:hover { background:#d97706; }
+
+    .fu-compose { display:flex; margin-top:12px; flex-direction:column; gap:8px; }
+    .fu-textarea { border:1.5px solid #fcd34d; border-radius:8px; padding:8px 12px; font-size:13px; font-family:inherit; background:#fff; color:var(--text); outline:none; resize:none; line-height:1.45; width:100%; height:38px; min-height:38px; overflow:hidden; }
+    .fu-textarea:focus { border-color:var(--warning); }
+    .fu-actions { display:flex; gap:8px; }
+    .fu-log { width:100%; background:var(--warning); color:#fff; border:none; border-radius:8px; padding:10px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+    .fu-log:hover { background:#d97706; }
+    .fu-cancel { background:none; border:1px solid var(--border); border-radius:8px; padding:9px 14px; font-size:13px; font-weight:600; color:var(--muted); cursor:pointer; font-family:inherit; }
+    .fu-hint { font-size:11px; color:#b45309; opacity:.75; }
+
+    /* ── Notes ──────────────────────────────────────────────── */
+    .notes-count { font-size:11px; font-weight:600; color:var(--muted); background:var(--bg); border:1px solid var(--border); border-radius:20px; padding:1px 8px; }
+    .note-item { display:flex; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); }
+    .note-item:last-child { border-bottom:none; }
+    .note-avatar { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff; flex-shrink:0; margin-top:1px; }
+    .note-bubble { flex:1; min-width:0; }
+    .note-meta { display:flex; align-items:baseline; gap:6px; margin-bottom:4px; flex-wrap:wrap; }
+    .note-author { font-size:13px; font-weight:700; }
+    .note-time { font-size:11px; color:var(--muted); }
+    .fu-tag { font-size:10px; font-weight:600; padding:1px 7px; border-radius:20px; background:#dcfce7; color:#15803d; }
+    @keyframes flashNew { 0% { background:#dcfce7; } 100% { background:transparent; } }
+    .note-item.flash { animation:flashNew 1.6s ease; border-radius:8px; }
+    .note-body { font-size:13px; color:var(--text); line-height:1.55; }
+    .note-body.system { font-size:12px; color:var(--muted); font-style:italic; }
+
+    .mockup-badge { position:fixed; bottom:20px; right:20px; background:var(--warning); color:#fff; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; border-radius:20px; padding:5px 14px; }
+  </style>
+</head>
+<body>
+  <div class="detail-pane">
+    <div class="detail-header">
+      <div class="detail-person">
+        <div class="detail-avatar" style="background:#8b5cf6">JR</div>
+        <div>
+          <div class="detail-name">Jordan Rivera</div>
+          <span class="detail-email">jordan@example.com</span>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <a class="pco-link">↗ View in PCO</a>
+        <span class="badge badge-ftg">First Time Guest</span>
+        <span class="badge badge-early">Early Career</span>
+      </div>
+    </div>
+
+    <div class="detail-body">
+      <!-- PCO info -->
+      <div>
+        <div class="field-section-title">From Planning Center</div>
+        <div class="info-grid">
+          <div class="info-item"><div class="info-item-label">Phone</div><div class="info-item-value">(555) 123-4567</div></div>
+          <div class="info-item"><div class="info-item-label">Age</div><div class="info-item-value">24</div></div>
+          <div class="info-item"><div class="info-item-label">Member since</div><div class="info-item-value">Jun 2026</div></div>
+          <div class="info-item"><div class="info-item-label">Birthday</div><div class="info-item-value">May 15</div></div>
+        </div>
+      </div>
+
+      <!-- YA Details -->
+      <div>
+        <div class="field-section-title"><span>YA Details</span></div>
+        <div class="field-row">
+          <div>
+            <div class="field-label">Needs Follow-Up?</div>
+            <div class="field-sub">Flagged when their connection card came in</div>
+          </div>
+          <button class="toggle on" id="toggle"></button>
+        </div>
+
+        <!-- ★ Follow-Up card — sits directly under the toggle -->
+        <div class="fu-card" id="fuCard">
+          <div class="fu-head">
+            <svg class="fu-icon" id="fuIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+            <div>
+              <div class="fu-title" id="fuTitle">Follow-Up</div>
+              <div class="fu-sub" id="fuSub">Jot down anything worth noting from your follow-up</div>
+            </div>
+          </div>
+
+          <div class="fu-compose" id="fuCompose">
+            <textarea class="fu-textarea" id="fuText" rows="1" placeholder="What happened?" oninput="this.style.height='38px';this.style.height=this.scrollHeight+'px'"></textarea>
+            <button class="fu-log" onclick="logFollowup()">Post</button>
+          </div>
+        </div>
+
+        <div class="field-stack-wrap">
+          <div class="field-stack">
+            <div class="field-label" style="font-weight:500;">YA Status</div>
+            <select class="field-select"><option>First Time Guest</option><option>Active</option><option>Missing</option></select>
+          </div>
+        </div>
+        <div class="field-stack-wrap">
+          <div class="field-stack">
+            <div class="field-label" style="font-weight:500;">Crew</div>
+            <select class="field-select"><option>Early Career</option></select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div>
+        <div class="field-section-title"><span>Notes</span><span class="notes-count" id="notesCount">1</span></div>
+        <div id="notesFeed">
+          <div class="note-item">
+            <div class="note-avatar" style="background:var(--primary-light); color:var(--primary); font-size:14px;">📋</div>
+            <div class="note-bubble">
+              <div class="note-meta"><span class="note-author" style="color:var(--muted); font-weight:500;">Connection Card</span><span class="note-time">Jun 5</span></div>
+              <div class="note-body system">Submitted via YA Connect on June 5, 2026, 7:14 PM.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup-badge">⚠ Mockup</div>
+
+  <script>
+    let noteCount = 1
+    function logFollowup() {
+      const text = document.getElementById('fuText').value.trim()
+      if (!text) { document.getElementById('fuText').focus(); return }
+
+      // 1) Add the follow-up to the notes feed — marked distinctly as a follow-up,
+      //    attributed to the logged-in leader, with their description.
+      const item = document.createElement('div')
+      item.className = 'note-item flash'
+      item.innerHTML = `
+        <div class="note-avatar" style="background:#16a34a">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        </div>
+        <div class="note-bubble">
+          <div class="note-meta">
+            <span class="note-author">Connor T.</span>
+            <span class="fu-tag">Followed up</span>
+            <span class="note-time">Just now</span>
+          </div>
+          <div class="note-body">${text.replace(/</g,'&lt;')}</div>
+        </div>`
+      const feed = document.getElementById('notesFeed')
+      feed.insertBefore(item, feed.firstChild)
+      noteCount++
+      document.getElementById('notesCount').textContent = noteCount
+
+      // 2) Clear the Needs-Follow-Up flag (toggle off)
+      const t = document.getElementById('toggle')
+      t.classList.remove('on'); t.classList.add('off')
+
+      // 3) The card's job is done — collapse and remove it
+      const card = document.getElementById('fuCard')
+      card.classList.add('removing')
+      setTimeout(() => card.remove(), 350)
+    }
+  </script>
+</body>
+</html>

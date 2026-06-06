@@ -22,7 +22,13 @@ async function getYANoteCategoryId() {
 function parseNote(raw) {
   const text = raw || ''
   const m = text.match(/^\[([^\]]+)\]\s*([\s\S]*)$/)
-  return m ? { author: m[1], body: m[2] } : { author: null, body: text }
+  const author = m ? m[1] : null
+  let body     = m ? m[2] : text
+  // Follow-up notes are stored as "[Name] Followed up: …" — detect + strip the marker.
+  let followup = false
+  const fm = body.match(/^Followed up:\s*([\s\S]*)$/)
+  if (fm) { followup = true; body = fm[1] }
+  return { author, body, followup }
 }
 
 export default async function handler(req, res) {
@@ -45,8 +51,8 @@ export default async function handler(req, res) {
       const notes = (result.data || [])
         .filter(n => String(n.attributes?.note_category_id) === String(catId))
         .map(n => {
-          const { author, body } = parseNote(n.attributes?.note)
-          return { id: n.id, author, body, createdAt: n.attributes?.created_at }
+          const { author, body, followup } = parseNote(n.attributes?.note)
+          return { id: n.id, author, body, followup, createdAt: n.attributes?.created_at }
         })
 
       return res.json(notes)
@@ -54,7 +60,7 @@ export default async function handler(req, res) {
 
     // ── Create a note on a person ─────────────────────────────
     if (req.method === 'POST') {
-      const { personId, body } = req.body || {}
+      const { personId, body, followup } = req.body || {}
       if (!/^\d+$/.test(String(personId))) {
         return res.status(400).json({ error: 'Invalid person id' })
       }
@@ -65,7 +71,7 @@ export default async function handler(req, res) {
       }
 
       const author   = user.global_name || user.username || 'Leader'
-      const noteBody = `[${author}] ${text}`
+      const noteBody = followup ? `[${author}] Followed up: ${text}` : `[${author}] ${text}`
 
       const created = await pcoFetch(`/people/v2/people/${personId}/notes`, {
         method: 'POST',
@@ -85,6 +91,7 @@ export default async function handler(req, res) {
         id:        n.id,
         author,
         body:      text,
+        followup:  !!followup,
         createdAt: n.attributes?.created_at,
       })
     }

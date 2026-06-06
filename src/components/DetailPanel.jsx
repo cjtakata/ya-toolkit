@@ -47,6 +47,8 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
   const [notesLoading, setNotesLoading] = useState(false)
   const [noteText, setNoteText]       = useState('')
   const [posting, setPosting]         = useState(false)
+  const [followupText, setFollowupText]       = useState('')
+  const [loggingFollowup, setLoggingFollowup] = useState(false)
 
   const handleCopyLink = useCallback(() => {
     navigator.clipboard.writeText(window.location.href).then(() => {
@@ -67,6 +69,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
     // Load notes for this person
     setNotes([])
     setNoteText('')
+    setFollowupText('')
     setNotesLoading(true)
     fetch(`/api/notes?personId=${person.id}`)
       .then(r => r.ok ? r.json() : Promise.reject())
@@ -96,6 +99,32 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
       alert(`Couldn't post note:\n\n${err.message}`)
     } finally {
       setPosting(false)
+    }
+  }
+
+  // Log a follow-up: post a note marked as a follow-up, then clear the flag.
+  async function logFollowup() {
+    const text = followupText.trim()
+    if (!text) return
+    setLoggingFollowup(true)
+    try {
+      const res = await fetch('/api/notes', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ personId: person.id, body: text, followup: true }),
+      })
+      if (!res.ok) {
+        const detail = (await res.json().catch(() => ({}))).error || `HTTP ${res.status}`
+        throw new Error(detail)
+      }
+      const note = await res.json()
+      setNotes(prev => [note, ...prev])
+      setFollowupText('')
+      await update('needsFollowup', false)   // clears the flag → hides the card
+    } catch (err) {
+      alert(`Couldn't log follow-up:\n\n${err.message}`)
+    } finally {
+      setLoggingFollowup(false)
     }
   }
 
@@ -221,6 +250,35 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
             />
           </div>
 
+          {draft.needsFollowup && (
+            <div className="fu-card">
+              <div className="fu-head">
+                <svg className="fu-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                <div>
+                  <div className="fu-title">Follow-Up</div>
+                  <div className="fu-sub">Jot down anything worth noting from your follow-up</div>
+                </div>
+              </div>
+              <div className="fu-compose">
+                <textarea
+                  className="fu-textarea"
+                  rows="1"
+                  placeholder="What happened?"
+                  value={followupText}
+                  onChange={e => setFollowupText(e.target.value)}
+                  onInput={e => { e.target.style.height = '38px'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                />
+                <button
+                  className="fu-log"
+                  onClick={logFollowup}
+                  disabled={loggingFollowup || !followupText.trim()}
+                >
+                  {loggingFollowup ? '…' : 'Post'}
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="field-stack-wrap">
             <div className="field-stack">
               <div className="field-label">YA Status</div>
@@ -286,12 +344,19 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
             <div className="notes-list">
               {notes.map(n => (
                 <div className="note-item" key={n.id}>
-                  <div className="note-avatar" style={{ background: authorColor(n.author) }}>
-                    {authorInitials(n.author)}
-                  </div>
+                  {n.followup ? (
+                    <div className="note-avatar note-avatar-fu">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                    </div>
+                  ) : (
+                    <div className="note-avatar" style={{ background: authorColor(n.author) }}>
+                      {authorInitials(n.author)}
+                    </div>
+                  )}
                   <div className="note-bubble">
                     <div className="note-meta">
                       <span className="note-author">{n.author || 'Leader'}</span>
+                      {n.followup && <span className="note-fu-tag">Followed up</span>}
                       <span className="note-time">{formatNoteDate(n.createdAt)}</span>
                     </div>
                     <div className="note-body">{n.body}</div>

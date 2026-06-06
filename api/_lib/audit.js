@@ -25,7 +25,8 @@ export async function logEdit({ actor, personId, personName, changes }) {
   const lines   = Object.entries(changes)
     .map(([k, v]) => `• ${FIELD_LABELS[k] || k} → ${fmtValue(k, v)}`)
 
-  const content = `📝 **${who}** updated **${subject}** (PCO \`${personId}\`)\n${lines.join('\n')}`
+  const link    = `https://ya-toolkit.vercel.app/people#/person/${personId}`
+  const content = `📝 **${who}** updated **${subject}**\n${lines.join('\n')}\n<${link}>`
 
   try {
     await fetch(url, {
