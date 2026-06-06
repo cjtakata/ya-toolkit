@@ -5,7 +5,7 @@ import { pcoFetch, pcoFetchAll, getFieldDefinitions, avatarColor, calcAge, fmtSi
 // Active = engaged, Missing = drifted but still pursuing,
 // TBD = under evaluation / not yet categorised.
 // Friend, Alumni, Moved On are excluded (they drop off the care list).
-const ACTIVE_STATUSES = new Set(['Active', 'Missing', 'TBD', 'Leader'])
+const ACTIVE_STATUSES = new Set(['Active', 'Missing', 'TBD', 'Leader', 'First Time Guest'])
 
 
 function extractFieldValues(personId, included, fieldDefs) {

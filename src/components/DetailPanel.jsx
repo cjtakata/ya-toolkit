@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { LIST_META } from './listMeta.js'
 
 const CREW_FALLBACK   = ['College Life', 'Early Career', 'Young Professional']
-const STATUS_FALLBACK = ['Active', 'Missing', 'Friend', 'Alumni', 'Moved On']
+const STATUS_FALLBACK = ['First Time Guest', 'Active', 'Missing', 'Friend', 'Alumni', 'Moved On']
 
 // Format a US 10-digit number as (xxx)xxx-xxxx; leave anything else as-is.
 function formatPhone(raw) {

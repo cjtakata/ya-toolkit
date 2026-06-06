@@ -1,12 +1,13 @@
 // Maps a YA Status value to its tag CSS class. Keyed by a normalized form
 // (lowercased, spaces stripped) so "Moved On" → "movedon".
 const STATUS_CLASS = {
-  active:  'badge-status-active',
-  missing: 'badge-status-missing',
-  tbd:     'badge-status-tbd',
-  friend:  'badge-status-friend',
-  alumni:  'badge-status-alumni',
-  movedon: 'badge-status-movedon',
+  active:         'badge-status-active',
+  missing:        'badge-status-missing',
+  tbd:            'badge-status-tbd',
+  friend:         'badge-status-friend',
+  alumni:         'badge-status-alumni',
+  movedon:        'badge-status-movedon',
+  firsttimeguest: 'badge-status-ftg',
 }
 
 export function statusClass(status) {
