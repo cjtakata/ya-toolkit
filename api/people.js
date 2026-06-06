@@ -5,16 +5,8 @@ import { pcoFetch, pcoFetchAll, getFieldDefinitions, avatarColor, calcAge, fmtSi
 // Active = engaged, Missing = drifted but still pursuing,
 // TBD = under evaluation / not yet categorised.
 // Friend, Alumni, Moved On are excluded (they drop off the care list).
-const ACTIVE_STATUSES = new Set(['Active', 'Missing', 'TBD'])
+const ACTIVE_STATUSES = new Set(['Active', 'Missing', 'TBD', 'Leader'])
 
-// Infer which crew group a person belongs to based on age.
-// Used as a default when no Crew custom field is set.
-function inferListFromAge(age) {
-  if (age == null) return 'earlycareer'
-  if (age <= 22)   return 'college'
-  if (age <= 26)   return 'earlycareer'
-  return 'youngpro'
-}
 
 function extractFieldValues(personId, included, fieldDefs) {
   const crewDefId        = fieldDefs[process.env.PCO_FIELD_CREW]
@@ -68,11 +60,15 @@ function extractEmail(personId, included) {
   return primary?.attributes?.address || ''
 }
 
-// Map a Crew custom field value to the list key used in the frontend
-const CREW_VALUE_TO_LIST = {
-  'College Life':        'college',
-  'Early Career':        'earlycareer',
-  'Young Professionals': 'youngpro',
+// Map a Crew custom field value to the list key used in the frontend.
+// Normalized (trim + lowercase) because PCO's stored values can carry stray
+// whitespace — e.g. the "College Life " option includes a trailing space.
+function crewToList(value) {
+  const v = (value || '').trim().toLowerCase()
+  if (v === 'college life')  return 'college'
+  if (v === 'early career')  return 'earlycareer'
+  if (v === 'young professional' || v === 'young professionals') return 'youngpro'
+  return 'unassigned'
 }
 
 function normalizePerson(raw, included, fieldDefs) {
@@ -86,10 +82,9 @@ function normalizePerson(raw, included, fieldDefs) {
   const name      = [firstName, lastName].filter(Boolean).join(' ') || 'Unknown'
   const age       = calcAge(a.birthdate)
 
-  // Determine list/group: prefer Crew field value, fall back to age inference
-  const listFromCrew = CREW_VALUE_TO_LIST[values.crew]
-  const list         = listFromCrew || inferListFromAge(age)
-  const listNames    = { college: 'College Life', earlycareer: 'Early Career', youngpro: 'Young Professionals' }
+  // Determine list/group from Crew custom field only (normalized lookup)
+  const list = crewToList(values.crew)
+  const listNames    = { college: 'College Life', earlycareer: 'Early Career', youngpro: 'Young Professional', unassigned: 'Unassigned' }
 
   return {
     id,

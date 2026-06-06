@@ -507,6 +507,65 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
 .info-link { color: var(--primary); text-decoration: none; }
 .info-link:hover { text-decoration: underline; }
 
+/* ── Auto-save indicator ──────────────────────────────────── */
+.save-indicator { font-size: 10px; font-weight: 700; letter-spacing: .02em; }
+.save-indicator.saving { color: var(--muted); }
+.save-indicator.saved  { color: var(--success); }
+
+/* ── Comment-style notes ──────────────────────────────────── */
+.notes-section { display: flex; flex-direction: column; }
+.notes-count {
+  font-size: 11px; font-weight: 600; color: var(--muted);
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 20px; padding: 1px 8px;
+}
+
+.note-compose { position: relative; margin-bottom: 16px; }
+.note-compose-input {
+  border: 1.5px solid var(--border); border-radius: 8px;
+  padding: 9px 64px 9px 12px; font-size: 13px; font-family: inherit;
+  background: var(--bg); color: var(--text); outline: none;
+  resize: none; line-height: 1.5; width: 100%; min-height: 64px;
+  transition: border-color .15s, background .15s;
+}
+.note-compose-input:focus { border-color: var(--primary); background: var(--surface); }
+.note-compose-input::placeholder { color: var(--muted); }
+.note-compose-btn {
+  position: absolute; bottom: 9px; right: 9px;
+  background: var(--primary); color: #fff; border: none;
+  border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 700;
+  cursor: pointer; font-family: inherit; transition: background .15s;
+}
+.note-compose-btn:hover:not(:disabled) { background: #4338ca; }
+.note-compose-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.notes-empty {
+  font-size: 13px; color: var(--muted); text-align: center;
+  padding: 16px 0;
+}
+
+.notes-list { display: flex; flex-direction: column; }
+.note-item {
+  display: flex; gap: 10px; padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.note-item:last-child { border-bottom: none; }
+.note-avatar {
+  width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: #fff; margin-top: 1px;
+}
+.note-bubble { flex: 1; min-width: 0; }
+.note-meta {
+  display: flex; align-items: baseline; gap: 6px; margin-bottom: 4px; flex-wrap: wrap;
+}
+.note-author { font-size: 13px; font-weight: 700; }
+.note-time   { font-size: 11px; color: var(--muted); }
+.note-body {
+  font-size: 13px; color: var(--text); line-height: 1.55;
+  white-space: pre-wrap; word-break: break-word;
+}
+
 .unsaved-dot {
   width: 7px; height: 7px; border-radius: 50%; background: var(--warning);
   display: none;

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { LIST_META } from './listMeta.js'
 
-const CREW_FALLBACK   = ['College Life', 'Early Career', 'Young Professionals']
+const CREW_FALLBACK   = ['College Life', 'Early Career', 'Young Professional']
 const STATUS_FALLBACK = ['Active', 'Missing', 'Friend', 'Alumni', 'Moved On']
 
 // Format a US 10-digit number as (xxx)xxx-xxxx; leave anything else as-is.
@@ -13,14 +13,40 @@ function formatPhone(raw) {
   return raw
 }
 
+const NOTE_PALETTE = [
+  '#6366f1','#0ea5e9','#ec4899','#f59e0b','#10b981',
+  '#8b5cf6','#ef4444','#14b8a6','#f97316','#84cc16','#a855f7','#3b82f6',
+]
+function authorColor(name) {
+  let hash = 0
+  for (const c of (name || 'Leader')) hash = (hash << 5) - hash + c.charCodeAt(0)
+  return NOTE_PALETTE[Math.abs(hash) % NOTE_PALETTE.length]
+}
+function authorInitials(name) {
+  return (name || 'Leader').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+}
+function formatNoteDate(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const sameYear = d.getFullYear() === new Date().getFullYear()
+  return d.toLocaleDateString('en-US', sameYear
+    ? { month: 'short', day: 'numeric' }
+    : { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
 export default function DetailPanel({ person, crewOptions = [], statusOptions = [], onClose, onSave }) {
   const crewChoices   = crewOptions.length   ? crewOptions   : CREW_FALLBACK
   const statusChoices = statusOptions.length ? statusOptions : STATUS_FALLBACK
   const [draft, setDraft]       = useState(null)
-  const [unsaved, setUnsaved]   = useState(false)
   const [saving, setSaving]     = useState(false)
   const [saved, setSaved]       = useState(false)
   const [copied, setCopied]     = useState(false)
+
+  // Comment-style notes (PCO Notes under the "Young Adults" category)
+  const [notes, setNotes]             = useState([])
+  const [notesLoading, setNotesLoading] = useState(false)
+  const [noteText, setNoteText]       = useState('')
+  const [posting, setPosting]         = useState(false)
 
   const handleCopyLink = useCallback(() => {
     navigator.clipboard.writeText(window.location.href).then(() => {
@@ -35,11 +61,43 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
       status:        person.status        || '',
       crew:          person.crew          || '',
       needsFollowup: person.needsFollowup ?? false,
-      notes:         person.notes         || '',
     })
-    setUnsaved(false)
     setSaved(false)
+
+    // Load notes for this person
+    setNotes([])
+    setNoteText('')
+    setNotesLoading(true)
+    fetch(`/api/notes?personId=${person.id}`)
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => setNotes(Array.isArray(data) ? data : []))
+      .catch(() => {})
+      .finally(() => setNotesLoading(false))
   }, [person?.id])
+
+  async function postNote() {
+    const text = noteText.trim()
+    if (!text) return
+    setPosting(true)
+    try {
+      const res = await fetch('/api/notes', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ personId: person.id, body: text }),
+      })
+      if (!res.ok) {
+        const detail = (await res.json().catch(() => ({}))).error || `HTTP ${res.status}`
+        throw new Error(detail)
+      }
+      const note = await res.json()
+      setNotes(prev => [note, ...prev])
+      setNoteText('')
+    } catch (err) {
+      alert(`Couldn't post note:\n\n${err.message}`)
+    } finally {
+      setPosting(false)
+    }
+  }
 
   if (!person) {
     return (
@@ -54,47 +112,25 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
   const lm       = LIST_META[person.list] || { crew: person.list, badgeCls: '' }
   const initials = person.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 
-  function update(field, value) {
+  // Auto-save: each field persists to PCO the moment it changes.
+  async function update(field, value) {
+    const prev = draft[field]
     setDraft(d => ({ ...d, [field]: value }))
-    setUnsaved(true)
     setSaved(false)
-  }
-
-  async function handleSave() {
-    // Diff against the loaded values — only send fields that actually changed,
-    // so we never re-write (or clobber) a field the leader didn't touch.
-    const original = {
-      status:        person.status        || '',
-      crew:          person.crew          || '',
-      needsFollowup: person.needsFollowup ?? false,
-      notes:         person.notes         || '',
-    }
-    const changed = {}
-    for (const k of ['status', 'crew', 'needsFollowup', 'notes']) {
-      if (draft[k] !== original[k]) changed[k] = draft[k]
-    }
-
-    if (Object.keys(changed).length === 0) {
-      setUnsaved(false)
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-      return
-    }
-
     setSaving(true)
     try {
       await onSave(person.id, {
-        fields:       changed,
+        fields:       { [field]: value },
         fieldDataIds: person._fieldDataIds || {},
         personName:   person.name,
       })
-      setUnsaved(false)
+      setSaving(false)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (err) {
-      alert(`Couldn't save to PCO:\n\n${err.message}`)
-    } finally {
+      setDraft(d => ({ ...d, [field]: prev }))   // revert on failure
       setSaving(false)
+      alert(`Couldn't save to PCO:\n\n${err.message}`)
     }
   }
 
@@ -133,7 +169,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
           >
             ↗ View in PCO
           </a>
-          <span className={`badge ${lm.badgeCls}`}>{lm.crew}</span>
+          {person.list !== 'unassigned' && <span className={`badge ${lm.badgeCls}`}>{lm.crew}</span>}
         </div>
       </div>
 
@@ -167,9 +203,11 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
 
         {/* YA Details custom fields */}
         <div>
-          <div className="field-section-title">
-            YA Details
-            <span className={`unsaved-dot${unsaved ? ' show' : ''}`} />
+          <div className="field-section-title" style={{ justifyContent: 'space-between' }}>
+            <span>YA Details</span>
+            {saving ? <span className="save-indicator saving">Saving…</span>
+              : saved ? <span className="save-indicator saved">✓ Saved</span>
+              : null}
           </div>
 
           <div className="field-row">
@@ -215,29 +253,54 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
             </div>
           </div>
 
-          <div className="field-stack-wrap" style={{ borderBottom: 'none' }}>
-            <div className="field-stack">
-              <div className="field-label">YA Notes</div>
-              <textarea
-                className="field-textarea"
-                placeholder="Notes visible to all leaders…"
-                value={draft.notes}
-                onChange={e => update('notes', e.target.value)}
-              />
-            </div>
-          </div>
         </div>
-      </div>
 
-      <div className="detail-footer">
-        <button className="btn-cancel" onClick={onClose}>Cancel</button>
-        <button
-          className={`btn-save${saved ? ' saved' : ''}`}
-          onClick={handleSave}
-          disabled={saving}
-        >
-          {saved ? '✓ Saved' : saving ? 'Saving…' : 'Save to PCO'}
-        </button>
+        {/* Comment-style notes → PCO Notes under "Young Adults" */}
+        <div className="notes-section">
+          <div className="field-section-title" style={{ justifyContent: 'space-between' }}>
+            <span>Notes</span>
+            {notes.length > 0 && <span className="notes-count">{notes.length}</span>}
+          </div>
+
+          <div className="note-compose">
+            <textarea
+              className="note-compose-input"
+              placeholder="Add a note…"
+              value={noteText}
+              onChange={e => setNoteText(e.target.value)}
+            />
+            <button
+              className="note-compose-btn"
+              onClick={postNote}
+              disabled={posting || !noteText.trim()}
+            >
+              {posting ? '…' : 'Post'}
+            </button>
+          </div>
+
+          {notesLoading ? (
+            <div className="notes-empty">Loading notes…</div>
+          ) : notes.length === 0 ? (
+            <div className="notes-empty">No notes yet. Add the first one above.</div>
+          ) : (
+            <div className="notes-list">
+              {notes.map(n => (
+                <div className="note-item" key={n.id}>
+                  <div className="note-avatar" style={{ background: authorColor(n.author) }}>
+                    {authorInitials(n.author)}
+                  </div>
+                  <div className="note-bubble">
+                    <div className="note-meta">
+                      <span className="note-author">{n.author || 'Leader'}</span>
+                      <span className="note-time">{formatNoteDate(n.createdAt)}</span>
+                    </div>
+                    <div className="note-body">{n.body}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

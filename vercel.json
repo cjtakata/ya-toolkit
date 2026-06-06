@@ -1,7 +1,6 @@
 {
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/people", "destination": "/people/index.html" },
-    { "source": "/people/(.*)", "destination": "/people/index.html" }
+    { "source": "/people", "destination": "/people/index.html" }
   ]
 }

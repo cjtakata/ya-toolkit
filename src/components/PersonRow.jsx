@@ -21,7 +21,7 @@ export default function PersonRow({ person: p, selected, onClick }) {
         </div>
         <div className="person-chips">
           {p.status && <span className={`badge ${statusClass(p.status)}`}>{p.status}</span>}
-          <span className={`badge ${lm.badgeCls}`}>{lm.crew}</span>
+          {p.list !== 'unassigned' && <span className={`badge ${lm.badgeCls}`}>{lm.crew}</span>}
           {genderTag && <span className="badge badge-gender">{genderTag}</span>}
         </div>
       </div>
