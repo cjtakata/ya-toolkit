@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Check, Link2, X, ExternalLink, Flag, UserCheck, User } from 'lucide-react'
 import { LIST_META } from './listMeta.js'
 
 const CREW_FALLBACK   = ['College Life', 'Early Career', 'Young Professional']
@@ -34,7 +35,7 @@ function formatNoteDate(iso) {
     : { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-export default function DetailPanel({ person, crewOptions = [], statusOptions = [], onClose, onSave }) {
+export default function DetailPanel({ person, crewOptions = [], statusOptions = [], currentUser, onClose, onSave }) {
   const crewChoices   = crewOptions.length   ? crewOptions   : CREW_FALLBACK
   const statusChoices = statusOptions.length ? statusOptions : STATUS_FALLBACK
   const [draft, setDraft]       = useState(null)
@@ -49,6 +50,9 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
   const [posting, setPosting]         = useState(false)
   const [followupText, setFollowupText]       = useState('')
   const [loggingFollowup, setLoggingFollowup] = useState(false)
+  const [claiming, setClaiming]               = useState(false)
+  const [showOverride, setShowOverride]       = useState(false)
+  const [overrideText, setOverrideText]       = useState('')
 
   const handleCopyLink = useCallback(() => {
     navigator.clipboard.writeText(window.location.href).then(() => {
@@ -70,6 +74,8 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
     setNotes([])
     setNoteText('')
     setFollowupText('')
+    setShowOverride(false)
+    setOverrideText('')
     setNotesLoading(true)
     fetch(`/api/notes?personId=${person.id}`)
       .then(r => r.ok ? r.json() : Promise.reject())
@@ -120,7 +126,50 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
       const note = await res.json()
       setNotes(prev => [note, ...prev])
       setFollowupText('')
-      await update('needsFollowup', false)   // clears the flag → hides the card
+      await update('needsFollowup', false)
+      await setAssignedLeader('')
+    } catch (err) {
+      alert(`Couldn't log follow-up:\n\n${err.message}`)
+    } finally {
+      setLoggingFollowup(false)
+    }
+  }
+
+  async function setAssignedLeader(value) {
+    setClaiming(true)
+    try {
+      await onSave(person.id, {
+        fields:       { assignedLeader: value },
+        fieldDataIds: person._fieldDataIds || {},
+        personName:   person.name,
+      })
+    } catch (err) {
+      alert(`Couldn't update assigned leader:\n\n${err.message}`)
+    } finally {
+      setClaiming(false)
+    }
+  }
+
+  async function logFollowupOverride() {
+    const text = overrideText.trim()
+    if (!text) return
+    setLoggingFollowup(true)
+    try {
+      const res = await fetch('/api/notes', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ personId: person.id, body: text, followup: true }),
+      })
+      if (!res.ok) {
+        const detail = (await res.json().catch(() => ({}))).error || `HTTP ${res.status}`
+        throw new Error(detail)
+      }
+      const note = await res.json()
+      setNotes(prev => [note, ...prev])
+      setOverrideText('')
+      setShowOverride(false)
+      await update('needsFollowup', false)
+      await setAssignedLeader('')
     } catch (err) {
       alert(`Couldn't log follow-up:\n\n${err.message}`)
     } finally {
@@ -184,9 +233,9 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
             <button className={`copy-link-btn${copied ? ' copied' : ''}`} onClick={handleCopyLink} title="Copy link to this profile">
-              {copied ? '✓ Copied' : '🔗 Copy Link'}
+              {copied ? <><Check size={13} />Copied</> : <><Link2 size={13} />Copy Link</>}
             </button>
-            <button className="close-btn" onClick={onClose}>✕</button>
+            <button className="close-btn" onClick={onClose} aria-label="Close"><X size={17} /></button>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -196,7 +245,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
             target="_blank"
             rel="noreferrer"
           >
-            ↗ View in PCO
+            <ExternalLink size={13} />View in PCO
           </a>
           {person.list !== 'unassigned' && <span className={`badge ${lm.badgeCls}`}>{lm.crew}</span>}
         </div>
@@ -235,7 +284,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
           <div className="field-section-title" style={{ justifyContent: 'space-between' }}>
             <span>YA Details</span>
             {saving ? <span className="save-indicator saving">Saving…</span>
-              : saved ? <span className="save-indicator saved">✓ Saved</span>
+              : saved ? <span className="save-indicator saved"><Check size={12} />Saved</span>
               : null}
           </div>
 
@@ -250,34 +299,116 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
             />
           </div>
 
-          {draft.needsFollowup && (
-            <div className="fu-card">
-              <div className="fu-head">
-                <svg className="fu-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-                <div>
-                  <div className="fu-title">Follow-Up</div>
-                  <div className="fu-sub">Jot down anything worth noting from your follow-up</div>
+          {draft.needsFollowup && (() => {
+            const owner = person.assignedLeader || ''
+            const isMine = owner && owner === currentUser
+            const isTheirs = owner && owner !== currentUser
+
+            if (!owner) return (
+              <div className="fu-card">
+                <div className="fu-head">
+                  <Flag className="fu-icon" />
+                  <div>
+                    <div className="fu-title">Follow-Up</div>
+                    <div className="fu-sub">No one has claimed this yet</div>
+                  </div>
                 </div>
-              </div>
-              <div className="fu-compose">
-                <textarea
-                  className="fu-textarea"
-                  rows="1"
-                  placeholder="What happened?"
-                  value={followupText}
-                  onChange={e => setFollowupText(e.target.value)}
-                  onInput={e => { e.target.style.height = '38px'; e.target.style.height = e.target.scrollHeight + 'px' }}
-                />
                 <button
                   className="fu-log"
-                  onClick={logFollowup}
-                  disabled={loggingFollowup || !followupText.trim()}
+                  onClick={() => setAssignedLeader(currentUser)}
+                  disabled={claiming}
                 >
-                  {loggingFollowup ? '…' : 'Post'}
+                  {claiming ? '…' : 'Claim this follow-up'}
                 </button>
               </div>
-            </div>
-          )}
+            )
+
+            if (isMine) return (
+              <div className="fu-card fu-card-mine">
+                <div className="fu-head">
+                  <UserCheck className="fu-icon fu-icon-mine" size={22} />
+                  <div style={{ flex: 1 }}>
+                    <div className="fu-title">Claimed by you</div>
+                    <div className="fu-sub">Jot down anything worth noting from your follow-up</div>
+                  </div>
+                  <button
+                    className="fu-btn-release"
+                    onClick={() => setAssignedLeader('')}
+                    disabled={claiming}
+                  >
+                    Release
+                  </button>
+                </div>
+                <div className="fu-compose">
+                  <textarea
+                    className="fu-textarea"
+                    rows="1"
+                    placeholder="What happened?"
+                    value={followupText}
+                    onChange={e => setFollowupText(e.target.value)}
+                    onInput={e => { e.target.style.height = '38px'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                  />
+                  <button
+                    className="fu-log fu-log-mine"
+                    onClick={logFollowup}
+                    disabled={loggingFollowup || !followupText.trim()}
+                  >
+                    {loggingFollowup ? '…' : 'Post'}
+                  </button>
+                </div>
+              </div>
+            )
+
+            // claimed by someone else
+            return (
+              <div className="fu-card fu-card-theirs">
+                <div className="fu-head">
+                  <User className="fu-icon fu-icon-theirs" size={22} />
+                  <div>
+                    <div className="fu-title">Claimed by {owner}</div>
+                    <div className="fu-sub">They're planning to reach out</div>
+                  </div>
+                </div>
+                <div className="fu-btn-row">
+                  <button
+                    className="fu-log fu-log-override"
+                    onClick={() => setShowOverride(v => !v)}
+                  >
+                    I followed up instead
+                  </button>
+                  <button
+                    className="fu-btn-takeover"
+                    onClick={() => setAssignedLeader(currentUser)}
+                    disabled={claiming}
+                  >
+                    Take over
+                  </button>
+                </div>
+                {showOverride && (
+                  <div className="fu-override">
+                    <div className="fu-compose">
+                      <textarea
+                        className="fu-textarea fu-textarea-theirs"
+                        rows="1"
+                        placeholder="What happened?"
+                        value={overrideText}
+                        onChange={e => setOverrideText(e.target.value)}
+                        onInput={e => { e.target.style.height = '38px'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                      />
+                      <button
+                        className="fu-log fu-log-override-post"
+                        onClick={logFollowupOverride}
+                        disabled={loggingFollowup || !overrideText.trim()}
+                      >
+                        {loggingFollowup ? '…' : 'Post'}
+                      </button>
+                    </div>
+                    <div className="fu-override-hint">This will close the follow-up and credit you.</div>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
 
           <div className="field-stack-wrap">
             <div className="field-stack">
@@ -346,7 +477,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
                 <div className="note-item" key={n.id}>
                   {n.followup ? (
                     <div className="note-avatar note-avatar-fu">
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                      <Check size={15} color="#fff" strokeWidth={3} />
                     </div>
                   ) : (
                     <div className="note-avatar" style={{ background: authorColor(n.author) }}>

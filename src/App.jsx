@@ -149,11 +149,13 @@ function AuthenticatedApp({ user, onLogout }) {
           myCrew={myCrew}
           selectedId={selectedId}
           onSelect={setSelectedId}
+          currentUser={user.global_name || user.username || 'Leader'}
         />
         <DetailPanel
           person={selectedPerson}
           crewOptions={crewOptions}
           statusOptions={statusOptions}
+          currentUser={user.global_name || user.username || 'Leader'}
           onClose={() => setSelectedId(null)}
           onSave={handleSave}
         />

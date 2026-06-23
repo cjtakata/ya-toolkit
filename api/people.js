@@ -9,16 +9,18 @@ const ACTIVE_STATUSES = new Set(['Active', 'Missing', 'TBD', 'Leader', 'First Ti
 
 
 function extractFieldValues(personId, included, fieldDefs) {
-  const crewDefId        = fieldDefs[process.env.PCO_FIELD_CREW]
-  const needsFollowupId  = fieldDefs[process.env.PCO_FIELD_NEEDS_FOLLOWUP]
-  const notesDefId       = fieldDefs[process.env.PCO_FIELD_NOTES]
-  const statusDefId      = fieldDefs[process.env.PCO_FIELD_STATUS]
+  const crewDefId           = fieldDefs[process.env.PCO_FIELD_CREW]
+  const needsFollowupId     = fieldDefs[process.env.PCO_FIELD_NEEDS_FOLLOWUP]
+  const notesDefId          = fieldDefs[process.env.PCO_FIELD_NOTES]
+  const statusDefId         = fieldDefs[process.env.PCO_FIELD_STATUS]
+  const assignedLeaderDefId = fieldDefs[process.env.PCO_FIELD_ASSIGNED_LEADER]
 
   const defIdToKey = {}
-  if (crewDefId)       defIdToKey[crewDefId]       = 'crew'
-  if (needsFollowupId) defIdToKey[needsFollowupId] = 'needsFollowup'
-  if (notesDefId)      defIdToKey[notesDefId]       = 'notes'
-  if (statusDefId)     defIdToKey[statusDefId]      = 'status'
+  if (crewDefId)           defIdToKey[crewDefId]           = 'crew'
+  if (needsFollowupId)     defIdToKey[needsFollowupId]     = 'needsFollowup'
+  if (notesDefId)          defIdToKey[notesDefId]          = 'notes'
+  if (statusDefId)         defIdToKey[statusDefId]         = 'status'
+  if (assignedLeaderDefId) defIdToKey[assignedLeaderDefId] = 'assignedLeader'
 
   const values  = {}
   const dataIds = {}
@@ -98,11 +100,12 @@ function normalizePerson(raw, included, fieldDefs) {
     color:          avatarColor(name),
     list,
     listName:       listNames[list],
-    crew:           values.crew         || '',
-    needsFollowup:  values.needsFollowup ?? false,
-    notes:          values.notes        || '',
-    status:         values.status       || '',
-    _fieldDataIds:  dataIds,
+    crew:            values.crew           || '',
+    needsFollowup:   values.needsFollowup  ?? false,
+    notes:           values.notes          || '',
+    status:          values.status         || '',
+    assignedLeader:  values.assignedLeader || '',
+    _fieldDataIds:   dataIds,
   }
 }
 

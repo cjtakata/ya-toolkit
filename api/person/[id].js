@@ -3,20 +3,22 @@ import { pcoFetch, getFieldDefinitions, getFieldOptions } from '../_lib/pco.js'
 import { logEdit } from '../_lib/audit.js'
 
 const FIELD_ENV_MAP = {
-  crew:          'PCO_FIELD_CREW',
-  needsFollowup: 'PCO_FIELD_NEEDS_FOLLOWUP',
-  notes:         'PCO_FIELD_NOTES',
-  status:        'PCO_FIELD_STATUS',
+  crew:            'PCO_FIELD_CREW',
+  needsFollowup:   'PCO_FIELD_NEEDS_FOLLOWUP',
+  notes:           'PCO_FIELD_NOTES',
+  status:          'PCO_FIELD_STATUS',
+  assignedLeader:  'PCO_FIELD_ASSIGNED_LEADER',
 }
 
 // Hardcoded allowlist: the PCO field-definition ID each writable key resolves
 // to MUST be one of these. A misconfigured env var can therefore never
 // redirect a write to a different field on the profile.
 const EXPECTED_FIELD_IDS = {
-  crew:          '431524',
-  needsFollowup: '1065427',
-  notes:         '1065428',
-  status:        '1065431',
+  crew:            '431524',
+  needsFollowup:   '1065427',
+  notes:           '1065428',
+  status:          '1065431',
+  assignedLeader:  '1067887',
 }
 
 // Select-type fields whose submitted value must match a live PCO option.

@@ -1,13 +1,25 @@
+import { StickyNote } from 'lucide-react'
 import { LIST_META } from './listMeta.js'
 import { statusClass } from './statusMeta.js'
 
-export default function PersonRow({ person: p, selected, onClick }) {
+export default function PersonRow({ person: p, selected, onClick, currentUser }) {
   const initials = p.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
   const lm = LIST_META[p.list] || { crew: p.list, badgeCls: '' }
 
   const g = (p.gender || '').trim().toLowerCase()
   const genderTag = g === 'male' ? 'M' : g === 'female' ? 'F' : null
   const hasNote = !!(p.notes && p.notes.trim())
+
+  let ownerChip = null
+  if (p.needsFollowup) {
+    if (!p.assignedLeader) {
+      ownerChip = <div className="owner-chip owner-chip-unclaimed">No owner</div>
+    } else if (p.assignedLeader === currentUser) {
+      ownerChip = <div className="owner-chip owner-chip-mine">You</div>
+    } else {
+      ownerChip = <div className="owner-chip owner-chip-theirs">{p.assignedLeader}</div>
+    }
+  }
 
   return (
     <div className={`person-row${selected ? ' selected' : ''}`} onClick={onClick}>
@@ -17,7 +29,7 @@ export default function PersonRow({ person: p, selected, onClick }) {
       <div className="person-info">
         <div className="person-name-row">
           <span className="person-name">{p.name}</span>
-          {hasNote && <span className="note-indicator" title="Has a note">📝</span>}
+          {hasNote && <StickyNote className="note-indicator" size={13} aria-label="Has a note" />}
         </div>
         <div className="person-chips">
           {p.status && <span className={`badge ${statusClass(p.status)}`}>{p.status}</span>}
@@ -31,6 +43,7 @@ export default function PersonRow({ person: p, selected, onClick }) {
           title={p.needsFollowup ? 'Needs follow-up' : 'No follow-up needed'}
         />
         <div className="followup-label">{p.needsFollowup ? 'Follow up' : ''}</div>
+        {ownerChip}
       </div>
     </div>
   )

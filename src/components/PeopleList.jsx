@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { Search, TriangleAlert } from 'lucide-react'
 import PersonRow from './PersonRow.jsx'
 import { CREW_OPTIONS, CREW_LABEL } from './listMeta.js'
 
@@ -6,7 +7,7 @@ const LIST_OPTIONS = CREW_OPTIONS
 
 export default function PeopleList({
   people, loading, error, statusOptions = [],
-  myCrew = 'all', selectedId, onSelect,
+  myCrew = 'all', selectedId, onSelect, currentUser,
 }) {
   const hasCrew = myCrew && myCrew !== 'all'
 
@@ -70,7 +71,7 @@ export default function PeopleList({
             <button onClick={focusMyCrew}>View my crew</button>
             {myCrewStats.needs > 0 && (
               <button className="mycrew-followup" onClick={focusFollowup}>
-                ⚠ {myCrewStats.needs} need follow-up
+                <TriangleAlert size={13} /> {myCrewStats.needs} need follow-up
               </button>
             )}
           </div>
@@ -79,7 +80,7 @@ export default function PeopleList({
 
       <div className="list-toolbar">
         <div className="search-wrap">
-          <span className="search-icon">🔍</span>
+          <Search className="search-icon" size={15} />
           <input
             className="search-input"
             type="search"
@@ -127,7 +128,7 @@ export default function PeopleList({
         {loading && <div className="empty-state">Loading people from PCO…</div>}
         {error   && <div className="empty-state" style={{ color: 'var(--danger)' }}>{error}</div>}
         {!loading && !error && visible.length === 0 && (
-          <div className="empty-state">🔍<p>No people match your filters.</p></div>
+          <div className="empty-state"><Search size={28} /><p>No people match your filters.</p></div>
         )}
         {visible.map(p => (
           <PersonRow
@@ -135,6 +136,7 @@ export default function PeopleList({
             person={p}
             selected={p.id === selectedId}
             onClick={() => onSelect(p.id)}
+            currentUser={currentUser}
           />
         ))}
       </div>
