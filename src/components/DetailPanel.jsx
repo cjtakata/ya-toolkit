@@ -53,6 +53,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
   const [claiming, setClaiming]               = useState(false)
   const [showOverride, setShowOverride]       = useState(false)
   const [overrideText, setOverrideText]       = useState('')
+  const [closeStatus, setCloseStatus]         = useState('Active')
 
   const handleCopyLink = useCallback(() => {
     navigator.clipboard.writeText(window.location.href).then(() => {
@@ -76,6 +77,8 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
     setFollowupText('')
     setShowOverride(false)
     setOverrideText('')
+    const s = (person.status || '').toLowerCase()
+    setCloseStatus(s === 'first time guest' || s === 'missing' ? 'Active' : '')
     setNotesLoading(true)
     fetch(`/api/notes?personId=${person.id}`)
       .then(r => r.ok ? r.json() : Promise.reject())
@@ -128,6 +131,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
       setFollowupText('')
       await update('needsFollowup', false)
       await setAssignedLeader('')
+      if (closeStatus) await update('status', closeStatus)
     } catch (err) {
       alert(`Couldn't log follow-up:\n\n${err.message}`)
     } finally {
@@ -170,6 +174,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
       setShowOverride(false)
       await update('needsFollowup', false)
       await setAssignedLeader('')
+      if (closeStatus) await update('status', closeStatus)
     } catch (err) {
       alert(`Couldn't log follow-up:\n\n${err.message}`)
     } finally {
@@ -348,12 +353,25 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
                     onChange={e => setFollowupText(e.target.value)}
                     onInput={e => { e.target.style.height = '38px'; e.target.style.height = e.target.scrollHeight + 'px' }}
                   />
+                  {closeStatus !== '' && (
+                    <div className="status-strip">
+                      <span className="status-strip-label">Mark as</span>
+                      <button
+                        className={`status-pill pill-active${closeStatus === 'Active' ? ' selected' : ''}`}
+                        onClick={() => setCloseStatus('Active')}
+                      >Active</button>
+                      <button
+                        className={`status-pill pill-removed${closeStatus === 'Removed' ? ' selected' : ''}`}
+                        onClick={() => setCloseStatus('Removed')}
+                      >Removed</button>
+                    </div>
+                  )}
                   <button
                     className="fu-log fu-log-mine"
                     onClick={logFollowup}
                     disabled={loggingFollowup || !followupText.trim()}
                   >
-                    {loggingFollowup ? '…' : 'Post'}
+                    {loggingFollowup ? '…' : closeStatus === 'Removed' ? 'Post & mark removed' : 'Post'}
                   </button>
                 </div>
               </div>
@@ -403,6 +421,19 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
                         {loggingFollowup ? '…' : 'Post'}
                       </button>
                     </div>
+                    {closeStatus !== '' && (
+                      <div className="status-strip">
+                        <span className="status-strip-label">Mark as</span>
+                        <button
+                          className={`status-pill pill-active${closeStatus === 'Active' ? ' selected' : ''}`}
+                          onClick={() => setCloseStatus('Active')}
+                        >Active</button>
+                        <button
+                          className={`status-pill pill-removed${closeStatus === 'Removed' ? ' selected' : ''}`}
+                          onClick={() => setCloseStatus('Removed')}
+                        >Removed</button>
+                      </div>
+                    )}
                     <div className="fu-override-hint">This will close the follow-up and credit you.</div>
                   </div>
                 )}

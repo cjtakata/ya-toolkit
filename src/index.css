@@ -657,6 +657,23 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
   font-size: 11px; color: var(--muted); text-align: center; margin-top: 6px;
 }
 
+/* ── Status strip (shown when closing a FTG or Missing follow-up) ── */
+.status-strip {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: 10px; padding: 9px 11px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+}
+.status-strip-label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.status-pill {
+  display: inline-flex; align-items: center;
+  font-size: 12px; font-weight: 600; padding: 4px 11px; border-radius: 20px;
+  border: 1.5px solid; cursor: pointer; font-family: inherit; transition: all .12s;
+}
+.pill-active          { background: #d1fae5; border-color: #6ee7b7; color: #065f46; }
+.pill-active.selected { background: #059669; border-color: #059669; color: #fff; }
+.pill-removed          { background: var(--bg); border-color: var(--border); color: var(--muted); }
+.pill-removed.selected { background: #6b7280; border-color: #6b7280; color: #fff; }
+
 /* Follow-up entry in the notes feed */
 .note-avatar-fu { background: #16a34a; }
 .note-fu-tag {
