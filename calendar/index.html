@@ -200,7 +200,8 @@
     .close-btn:hover { background: var(--border); }
     .modal-body  { padding: 16px 20px 24px; display: flex; flex-direction: column; gap: 12px; }
     .meta-row    { display: flex; align-items: center; gap: 8px; }
-    .meta-icon   { font-size: 15px; width: 20px; text-align: center; }
+    .ico { width: 1em; height: 1em; display: inline-block; vertical-align: -0.125em; flex: none; }
+    .meta-icon   { font-size: 15px; width: 20px; text-align: center; color: var(--muted); }
     .meta-text   { font-size: 14px; color: var(--muted); }
     .type-badge  { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; }
     .detail-box  { background: var(--bg); border-radius: 8px; padding: 12px 14px; font-size: 13px; line-height: 1.6; color: var(--text); }
@@ -329,6 +330,7 @@
     </div>
   </div>
   <div class="header-right">
+    <button class="btn-add-event" id="addEventBtn" style="display:none" onclick="openEditor(null)">+ Add Event</button>
     <div class="sync-badge loading" id="syncBadge">
       <span class="sync-dot pulse" id="syncDot"></span>
       <span id="syncText">Loading…</span>
@@ -370,7 +372,7 @@
 
 <!-- ══ Error / no-sheet state ═══════════════════════════════════ -->
 <div class="state-card hidden" id="errorState">
-  <div style="font-size:36px">📋</div>
+  <div style="font-size:40px;color:var(--muted)"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg></div>
   <div class="state-title" id="errorTitle">No sheet connected</div>
   <div class="state-sub" id="errorSub">
     Connect a Google Sheet to display your events.
@@ -403,24 +405,76 @@
   <div class="modal">
     <div class="modal-header">
       <div class="modal-title" id="modalTitle"></div>
-      <button class="close-btn" onclick="closeEventModal()">✕</button>
+      <button class="close-btn" onclick="closeEventModal()" aria-label="Close"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     </div>
     <div class="modal-body">
       <div class="meta-row">
-        <span class="meta-icon">🏷</span>
+        <span class="meta-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg></span>
         <span class="meta-text">Type:</span>
         <span class="type-badge" id="modalType"></span>
       </div>
       <div class="meta-row">
-        <span class="meta-icon">📅</span>
+        <span class="meta-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg></span>
         <span class="meta-text" id="modalDate"></span>
       </div>
       <div class="meta-row" id="modalDaysOutRow">
-        <span class="meta-icon">⏱</span>
+        <span class="meta-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/></svg></span>
         <span class="meta-text" id="modalDaysOut"></span>
       </div>
       <div class="detail-box" id="modalDetail"></div>
-      <button class="modal-add-cal" id="modalAddCal">📅 Add to Calendar</button>
+      <button class="modal-add-cal" id="modalAddCal"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 19h6"/><path d="M16 2v4"/><path d="M19 16v6"/><path d="M21 12.598V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8.5"/><path d="M3 10h18"/><path d="M8 2v4"/></svg>Add to Calendar</button>
+      <div class="modal-edit-row" id="modalEditRow" style="display:none">
+        <button class="btn-edit-ev" id="modalEditBtn"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>Edit</button>
+        <button class="btn-del-ev modal-del" id="modalDeleteBtn">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Event Editor Modal (leaders only) ═══════════════════════ -->
+<style>
+  .btn-add-event { background:var(--primary); color:#fff; border:none; border-radius:8px; padding:7px 12px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; margin-right:8px; }
+  .btn-add-event:hover { background:#4338ca; }
+  .ed-form { display:flex; flex-direction:column; gap:12px; }
+  .ed-field { display:flex; flex-direction:column; gap:5px; }
+  .ed-field label { font-size:12px; font-weight:600; color:var(--muted); }
+  .ed-field input, .ed-field select, .ed-field textarea { border:1.5px solid var(--border); border-radius:8px; padding:9px 12px; font-size:14px; font-family:inherit; background:var(--bg); color:var(--text); outline:none; width:100%; -webkit-appearance:none; }
+  .ed-field input:focus, .ed-field select:focus, .ed-field textarea:focus { border-color:var(--primary); background:var(--surface); }
+  .ed-field textarea { resize:vertical; min-height:64px; line-height:1.5; }
+  .ed-daysout { font-size:12.5px; font-weight:600; color:var(--primary); min-height:16px; }
+  .ed-daysout:empty { display:none; }
+  .ed-row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .ed-foot { display:flex; align-items:center; gap:8px; margin-top:6px; }
+  .btn-save-ev { flex:1; background:var(--primary); color:#fff; border:none; border-radius:8px; padding:10px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .btn-save-ev:hover { background:#4338ca; }
+  .btn-cancel-ev { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 14px; font-size:14px; font-weight:600; color:var(--muted); cursor:pointer; font-family:inherit; }
+  .btn-del-ev { background:none; border:none; color:#ef4444; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+  #edDelete { margin-right:auto; }
+  .modal-edit-row { display:flex; gap:8px; margin-top:10px; }
+  .btn-edit-ev { flex:1; display:inline-flex; align-items:center; justify-content:center; gap:6px; background:var(--primary-light); color:var(--primary); border:none; border-radius:8px; padding:9px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .btn-edit-ev:hover { background:#ddd6fe; }
+  .modal-del { border:1px solid var(--border); border-radius:8px; padding:9px 14px; }
+</style>
+<div class="overlay" id="editorOverlay" onclick="closeEditor(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="edTitle">Add event</div>
+      <button class="close-btn" onclick="closeEditor()" aria-label="Close"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+    </div>
+    <div class="modal-body ed-form">
+      <div class="ed-field"><label>Event name</label><input type="text" id="ed-name" placeholder="e.g. Friday Hangout"></div>
+      <div class="ed-field"><label>Type</label><select id="ed-type"><option>Service</option><option>Event</option><option>Leader</option><option>Venture</option></select></div>
+      <div class="ed-field"><label>Date</label><input type="date" id="ed-date" oninput="updateEdDaysOut()"><div class="ed-daysout" id="edDaysOut"></div></div>
+      <div class="ed-row2">
+        <div class="ed-field"><label>Start time</label><input type="time" id="ed-start"></div>
+        <div class="ed-field"><label>End time</label><input type="time" id="ed-end"></div>
+      </div>
+      <div class="ed-field"><label>Details</label><textarea id="ed-detail" placeholder="Location, notes…"></textarea></div>
+      <div class="ed-foot">
+        <button class="btn-del-ev" id="edDelete" onclick="deleteEventUI(editingRow)" style="display:none">Delete</button>
+        <button class="btn-cancel-ev" onclick="closeEditor()">Cancel</button>
+        <button class="btn-save-ev" id="edSave" onclick="saveEvent()">Save</button>
+      </div>
     </div>
   </div>
 </div>
@@ -461,11 +515,29 @@ const TYPE_NORMALIZE = {
   'ventures': 'Venture',
 };
 
+// ── Lucide icons (inlined SVG paths — no runtime dependency) ──
+const ICON_PATHS = {
+  tag: '<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/>',
+  calendar: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
+  'calendar-plus': '<path d="M16 19h6"/><path d="M16 2v4"/><path d="M19 16v6"/><path d="M21 12.598V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8.5"/><path d="M3 10h18"/><path d="M8 2v4"/>',
+  clock: '<path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/>',
+  'square-pen': '<path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/>',
+  'clipboard-list': '<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>',
+  handshake: '<path d="m11 17 2 2a1 1 0 1 0 3-3"/><path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4"/><path d="m21 3 1 11h-2"/><path d="M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3"/><path d="M3 4h8"/>',
+  'party-popper': '<path d="M5.8 11.3 2 22l10.7-3.79"/><path d="M4 3h.01"/><path d="M22 8h.01"/><path d="M15 2h.01"/><path d="M22 20h.01"/><path d="m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10"/><path d="m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11c-.11.7-.72 1.22-1.43 1.22H17"/><path d="m11 2 .33.82c.34.86-.2 1.82-1.11 1.98C9.52 4.9 9 5.52 9 6.23V7"/><path d="M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z"/>',
+  star: '<path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>',
+  rocket: '<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>',
+  x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+};
+function ico(name, extra) {
+  return `<svg class="ico${extra ? ' ' + extra : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON_PATHS[name] || ''}</svg>`;
+}
+
 const TYPE_META = {
-  Service: { cls: 'service', label: 'Service', icon: '🤝' },
-  Event:   { cls: 'event',   label: 'Event',   icon: '🎉' },
-  Leader:  { cls: 'leader',  label: 'Leader',  icon: '⭐' },
-  Venture: { cls: 'venture', label: 'Venture', icon: '🚀' },
+  Service: { cls: 'service', label: 'Service', icon: ico('handshake') },
+  Event:   { cls: 'event',   label: 'Event',   icon: ico('party-popper') },
+  Leader:  { cls: 'leader',  label: 'Leader',  icon: ico('star') },
+  Venture: { cls: 'venture', label: 'Venture', icon: ico('rocket') },
 };
 const MONTH_NAMES = ['January','February','March','April','May','June',
                      'July','August','September','October','November','December'];
@@ -790,7 +862,8 @@ function renderWeek() {
       evs.forEach(ev => {
         const chip = document.createElement('div');
         chip.className = `week-chip week-chip-${TYPE_META[ev.type].cls}`;
-        chip.textContent = `${TYPE_META[ev.type].icon} ${ev.name}`;
+        chip.innerHTML = TYPE_META[ev.type].icon;
+        chip.append(' ' + ev.name);
         chip.onclick = () => openEventModal(ev);
         evsCol.appendChild(chip);
       });
@@ -960,7 +1033,7 @@ function openEventModal(ev) {
   document.getElementById('modalDetail').textContent = ev.detail;
 
   const badge = document.getElementById('modalType');
-  badge.textContent      = `${tc.icon} ${tc.label}`;
+  badge.innerHTML        = `${tc.icon} ${tc.label}`;
   badge.style.background = `var(--${tc.cls}-bg)`;
   badge.style.color      = `var(--${tc.cls})`;
 
@@ -975,6 +1048,17 @@ function openEventModal(ev) {
   }
 
   document.getElementById('modalAddCal').onclick = () => downloadICS(ev);
+
+  const editRow = document.getElementById('modalEditRow');
+  const match = CAN_EDIT ? matchRow(ev) : null;
+  if (match) {
+    editRow.style.display = '';
+    document.getElementById('modalEditBtn').onclick = () => { closeEventModal(); openEditor(match); };
+    document.getElementById('modalDeleteBtn').onclick = () => deleteEventUI(match.row);
+  } else {
+    editRow.style.display = 'none';
+  }
+
   document.getElementById('eventOverlay').classList.add('open');
 }
 
@@ -984,12 +1068,124 @@ function closeEventModal(e) {
   }
 }
 
+// ── Editing (logged-in leaders only) ──────────────────────────
+let CAN_EDIT = false;
+let EDIT_EVENTS = [];
+let editingRow = null, editingOwner = '', editingDoc = '';
+
+async function checkCalAuth() {
+  try {
+    const me = await fetch('/api/me');
+    if (!me.ok) return;                       // not logged in → read-only
+    CAN_EDIT = true;
+    document.getElementById('addEventBtn').style.display = '';
+    await refreshEditEvents();
+  } catch { /* stay read-only */ }
+}
+async function refreshEditEvents() {
+  try {
+    const r = await fetch('/api/calendar');
+    EDIT_EVENTS = r.ok ? await r.json() : [];
+  } catch { EDIT_EVENTS = []; }
+}
+function matchRow(ev) {
+  return EDIT_EVENTS.find(e => e.date === ev.date && (e.event || '').trim() === (ev.name || '').trim());
+}
+function daysUntil(ds) {
+  if (!ds) return null;
+  const t = new Date(); t.setHours(0, 0, 0, 0);
+  return Math.round((new Date(ds + 'T00:00:00') - t) / 86400000);
+}
+
+function openEditor(src) {
+  editingRow   = src ? src.row : null;
+  editingOwner = src ? (src.owner || '') : '';
+  editingDoc   = src ? (src.doc   || '') : '';
+  document.getElementById('edTitle').textContent     = src ? 'Edit event' : 'Add event';
+  document.getElementById('edDelete').style.display  = src ? '' : 'none';
+  document.getElementById('ed-name').value   = src ? src.event : '';
+  document.getElementById('ed-type').value   = src ? (TYPE_NORMALIZE[(src.type || '').toLowerCase()] || src.type || 'Event') : 'Event';
+  document.getElementById('ed-date').value   = src ? src.date : '';
+  document.getElementById('ed-start').value  = src ? src.start : '';
+  document.getElementById('ed-end').value    = src ? src.end : '';
+  document.getElementById('ed-detail').value = src ? src.details : '';
+  updateEdDaysOut();
+  document.getElementById('editorOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('ed-name').focus(), 50);
+}
+function updateEdDaysOut() {
+  const ds = document.getElementById('ed-date').value;
+  const label = ds ? fmtDaysOut(daysUntil(ds)) : null;
+  document.getElementById('edDaysOut').innerHTML = label ? ico('calendar') + ' ' + label : '';
+}
+function closeEditor(e) {
+  if (!e || e.target === document.getElementById('editorOverlay')) {
+    document.getElementById('editorOverlay').classList.remove('open');
+  }
+}
+async function saveEvent() {
+  const ev = {
+    event:   document.getElementById('ed-name').value.trim(),
+    type:    document.getElementById('ed-type').value,
+    date:    document.getElementById('ed-date').value,
+    start:   document.getElementById('ed-start').value,
+    end:     document.getElementById('ed-end').value,
+    details: document.getElementById('ed-detail').value.trim(),
+    owner:   editingOwner,   // carried through untouched
+    doc:     editingDoc,
+  };
+  if (!ev.event || !ev.date) { alert('Event name and date are required.'); return; }
+  const btn = document.getElementById('edSave');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const method = editingRow ? 'PUT' : 'POST';
+    const body   = editingRow ? { row: editingRow, ...ev } : ev;
+    const res = await fetch('/api/calendar', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
+    document.getElementById('editorOverlay').classList.remove('open');
+    await refreshAfterWrite();
+  } catch (err) {
+    alert("Couldn't save event:\n\n" + err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save';
+  }
+}
+async function deleteEventUI(row) {
+  if (!row) return;
+  if (!confirm('Delete this event? This removes it from the calendar sheet.')) return;
+  try {
+    const res = await fetch('/api/calendar?row=' + row, { method: 'DELETE' });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
+    document.getElementById('editorOverlay').classList.remove('open');
+    closeEventModal();
+    await refreshAfterWrite();
+  } catch (err) {
+    alert("Couldn't delete event:\n\n" + err.message);
+  }
+}
+async function refreshAfterWrite() {
+  await refreshEditEvents();
+  // Re-render immediately from the fresh authed data (gviz can be cached a few minutes)
+  EVENTS = EDIT_EVENTS.map(e => ({
+    name:      e.event,
+    type:      TYPE_NORMALIZE[(e.type || '').toLowerCase()] || e.type,
+    date:      e.date,
+    detail:    e.details,
+    daysOut:   daysUntil(e.date),
+    startTime: parseTime(e.start),
+    endTime:   parseTime(e.end),
+  })).filter(ev => ev.name && ev.date && VALID_TYPES.has(ev.type));
+  renderAll();
+  setSyncState('live', `${EVENTS.length} events · ${fmtTime(new Date())}`);
+}
+
 
 // ── Init ──────────────────────────────────────────────────────
 (function init() {
   // Use saved override from Settings, otherwise fall back to the default sheet
   const saved = localStorage.getItem(STORAGE_KEY) || DEFAULT_SHEET_ID;
   loadData(saved);
+  checkCalAuth();
 
   window.addEventListener('resize', () => { if (EVENTS.length > 0) renderAll(); });
   document.addEventListener('keydown', e => {
