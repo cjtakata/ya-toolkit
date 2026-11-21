@@ -1,13 +1,64 @@
+import { useState } from 'react'
+
 const LOGO = <img src="/ya.svg" alt="YA" />
 
-export default function LoginScreen() {
-  const params = new URLSearchParams(window.location.search)
-  const error  = params.get('error')
+// Errors passed back from the emailed sign-in link (api/auth/magic-verify.js)
+const LINK_ERRORS = {
+  expired_token: 'That sign-in link has expired. Request a new code below.',
+  invalid_token: 'That sign-in link is invalid. Request a new code below.',
+  missing_token: 'That sign-in link is incomplete. Request a new code below.',
+}
 
-  const errorMsg = {
-    not_member:  'You must be a member of the YA Leaders Discord server to access this app.',
-    auth_failed: 'Sign-in failed. Please try again.',
-  }[error]
+export default function LoginScreen() {
+  const linkError = LINK_ERRORS[new URLSearchParams(window.location.search).get('error')]
+
+  const [step, setStep]           = useState('email')   // 'email' | 'code'
+  const [email, setEmail]         = useState('')
+  const [code, setCode]           = useState('')
+  const [challenge, setChallenge] = useState(null)
+  const [busy, setBusy]           = useState(false)
+  const [error, setError]         = useState(linkError || null)
+
+  async function requestCode(e) {
+    e?.preventDefault()
+    if (!email.trim() || busy) return
+    setBusy(true); setError(null)
+    try {
+      const r = await fetch('/api/auth/magic-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(d.error || 'Something went wrong. Try again.')
+      setChallenge(d.challenge)
+      setCode('')
+      setStep('code')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function verifyCode(e) {
+    e?.preventDefault()
+    if (code.length !== 6 || busy) return
+    setBusy(true); setError(null)
+    try {
+      const r = await fetch('/api/auth/magic-verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ challenge, code }),
+      })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(d.error || 'Something went wrong. Try again.')
+      window.location.replace('/people' + window.location.hash)
+    } catch (err) {
+      setError(err.message)
+      setBusy(false)
+    }
+  }
 
   return (
     <div className="login-screen">
@@ -17,18 +68,65 @@ export default function LoginScreen() {
           <div className="login-title">YA Toolkit</div>
           <div className="login-tagline">Ministry leader portal</div>
         </div>
-        <div className="login-subtitle">
-          Sign in with Discord to access the YA Toolkit. Only members of the YA Leaders server can log in.
-        </div>
-        {errorMsg && <div className="login-error">{errorMsg}</div>}
-        <a className="discord-btn" href="/api/auth/discord">
-          <svg className="discord-icon" viewBox="0 -15.39 127.14 127.14" fill="currentColor">
-            <path fillRule="evenodd" d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/>
-          </svg>
-          Sign in with Discord
-        </a>
+
+        {step === 'email' ? (
+          <form className="login-form" onSubmit={requestCode}>
+            <div className="login-subtitle">
+              Enter the email you use in Planning Center and we'll send you a sign-in code.
+            </div>
+            <input
+              className="login-input"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              autoCapitalize="none"
+              placeholder="you@example.com"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              autoFocus
+              required
+            />
+            {error && <div className="login-error">{error}</div>}
+            <button className="login-btn" type="submit" disabled={busy || !email.trim()}>
+              {busy ? 'Sending…' : 'Email me a code'}
+            </button>
+          </form>
+        ) : (
+          <form className="login-form" onSubmit={verifyCode}>
+            <div className="login-subtitle">
+              We sent a 6-digit code to <strong>{email.trim()}</strong>. It expires in 15 minutes.
+            </div>
+            <input
+              className="login-input login-code"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]{6}"
+              maxLength={6}
+              placeholder="000000"
+              value={code}
+              onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              autoFocus
+            />
+            {error && <div className="login-error">{error}</div>}
+            <button className="login-btn" type="submit" disabled={busy || code.length !== 6}>
+              {busy ? 'Signing in…' : 'Sign in'}
+            </button>
+            <div className="login-links">
+              <button type="button" className="login-link" onClick={requestCode} disabled={busy}>
+                Resend code
+              </button>
+              <span aria-hidden="true">·</span>
+              <button type="button" className="login-link"
+                onClick={() => { setStep('email'); setError(null) }} disabled={busy}>
+                Use a different email
+              </button>
+            </div>
+          </form>
+        )}
+
         <div className="login-note">
-          <strong>Leaders only.</strong> You must be a member of the YA Leaders Discord server to access this app. No password required — your Discord account is your login.
+          <strong>Leaders only.</strong> Access is for people marked as a YA Leader in Planning Center. No password needed.
         </div>
       </div>
     </div>

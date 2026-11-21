@@ -9,14 +9,18 @@ function hashCode(code) {
   return createHmac('sha256', process.env.JWT_SECRET).update(String(code)).digest('hex')
 }
 
-// Search PCO for a person by email, returns their profile or null
-async function findLeaderByEmail(email) {
+// Every PCO person with this email address (households often share one).
+async function findPeopleByEmail(email) {
   const encoded = encodeURIComponent(email)
-  const res = await pcoFetch(`/people/v2/emails?where%5Baddress%5D=${encoded}&per_page=1`)
-  const record = res.data?.[0]
-  const personId = record?.relationships?.person?.data?.id
-  if (!personId) return null
-  // The emails endpoint doesn't reliably populate `included`, so fetch directly.
+  const res = await pcoFetch(`/people/v2/emails?where%5Baddress%5D=${encoded}&per_page=10`)
+  const ids = [...new Set((res.data || [])
+    .map(r => r.relationships?.person?.data?.id)
+    .filter(Boolean))]
+  return ids
+}
+
+// The emails endpoint doesn't reliably populate `included`, so fetch directly.
+async function getPerson(personId) {
   const personRes = await pcoFetch(`/people/v2/people/${personId}`)
   return personRes.data || null
 }
@@ -58,15 +62,23 @@ export default async function handler(req, res) {
   const normalizedEmail = email.trim().toLowerCase()
 
   try {
-    const person = await findLeaderByEmail(normalizedEmail)
-    if (!person) {
-      return res.status(404).json({ error: 'No leader found with that email in Planning Center.' })
+    const personIds = await findPeopleByEmail(normalizedEmail)
+    if (!personIds.length) {
+      return res.status(404).json({ error: 'No one in Planning Center has that email.' })
     }
 
+    // Access rule: YA Status = "Leader". If several people share the email,
+    // the first one who is a leader wins.
     const fieldDefs = await getFieldDefinitions()
-    if (!(await isLeader(person.id, fieldDefs))) {
-      return res.status(403).json({ error: "That email isn't marked as a leader in Planning Center." })
+    let leaderId = null
+    for (const id of personIds) {
+      if (await isLeader(id, fieldDefs)) { leaderId = id; break }
     }
+    if (!leaderId) {
+      return res.status(403).json({ error: "That email isn't marked as a YA Leader in Planning Center." })
+    }
+    const person = await getPerson(leaderId)
+    if (!person) return res.status(500).json({ error: 'Something went wrong' })
 
     const crewKey = crewToKey(await getCrewValue(person.id, fieldDefs))
     const crews   = crewKey ? [crewKey] : ['*']

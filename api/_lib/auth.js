@@ -56,6 +56,12 @@ export async function requireAuth(req, res) {
   }
   try {
     const { payload } = await jwtVerify(token, secret())
+    // Only PCO-leader (email code) sessions count. Sessions from the old Discord
+    // login don't, so those leaders are asked to sign in again by email.
+    if (payload.auth !== 'pco') {
+      res.status(401).json({ error: 'Please sign in again' })
+      return null
+    }
     return payload
   } catch {
     res.status(401).json({ error: 'Invalid session' })

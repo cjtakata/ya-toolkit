@@ -8,7 +8,7 @@ export default async function handler(req, res) {
     username:    user.username,
     global_name: user.global_name,
     avatar:      user.avatar,
-    // Resolved from the user's Discord roles at login (see auth/callback.js).
+    // From the leader's PCO Crew field at sign-in (see auth/magic-request.js).
     crews:       user.crews || [],
   })
 }
