@@ -1,10 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
-import { Users, Calendar, Check, ChevronDown, LayoutGrid } from 'lucide-react'
+import { Users, Check, ChevronDown, LayoutGrid } from 'lucide-react'
 import { CREW_OPTIONS, CREW_LABEL } from './listMeta.js'
 
 // ── App-specific icons (white on slate #374151) ───────────────
 const IconPeople   = () => <Users color="#fff" />
-const IconCalendar = () => <Calendar color="#fff" />
 // Discord is a brand mark — not part of the Lucide set — so keep the original glyph.
 const IconDiscord = () => (
   <svg viewBox="0 -15.39 127.14 127.14" fill="white">
@@ -21,14 +20,6 @@ const APPS = [
     icon:    <IconPeople />,
     bg:      '#374151',
     current: true,
-  },
-  {
-    key:  'calendar',
-    name: 'Calendar',
-    desc: 'Events & schedule',
-    href: '/calendar',           // same domain — stays in PWA
-    icon: <IconCalendar />,
-    bg:   '#374151',
   },
   {
     key:  'discord',

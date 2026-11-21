@@ -1,7 +1,7 @@
 {
   "name": "YA Toolkit",
   "short_name": "YA Toolkit",
-  "description": "Ministry leader toolkit — people, calendar, and community",
+  "description": "Ministry leader toolkit — people and community",
   "start_url": "/people",
   "scope": "/",
   "display": "standalone",
