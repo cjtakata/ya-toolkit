@@ -11,6 +11,10 @@ function greeting() {
   return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
 }
 
+// A guest belongs to the chosen crew if it's theirs or they have no crew yet.
+export const inCrew = (c, myCrew) =>
+  !myCrew || myCrew === 'all' || c.person.list === myCrew || c.person.list === 'unassigned'
+
 const byOldest = key => (a, b) => (a[key] || '').localeCompare(b[key] || '')
 const byNewest = key => (a, b) => (b[key] || '').localeCompare(a[key] || '')
 
@@ -22,19 +26,21 @@ export default function HomeTab({
 }) {
   const [showAllDone, setShowAllDone] = useState(false)
 
-  const scoped = useMemo(
-    () => (myCrew && myCrew !== 'all') ? cards.filter(c => c.person.list === myCrew) : cards,
-    [cards, myCrew],
-  )
-
+  // What Home shows for the chosen crew: that crew's guests, plus guests with no
+  // crew yet (otherwise nobody's Home shows them), plus anyone this leader claimed
+  // or texted, whatever their crew. Your own guests never drop off your Home.
   const s = useMemo(() => {
+    const isMine = c => (c.state === 'claimed' && c.claimedBy === currentUser) ||
+                        (c.state === 'contacted' && c.contactedBy === currentUser)
+    const shown  = c => isMine(c) || inCrew(c, myCrew)
+    const scoped = cards.filter(shown)
     const waiting   = scoped.filter(c => c.state === 'waiting').sort(byOldest('submittedAt'))
     const claimed   = scoped.filter(c => c.state === 'claimed')
     const mine      = claimed.filter(c => c.claimedBy === currentUser).sort(byOldest('claimedAt'))
     const others    = claimed.filter(c => c.claimedBy !== currentUser).sort(byOldest('claimedAt'))
     const contacted = scoped.filter(c => c.state === 'contacted').sort(byNewest('contactedAt'))
     return { waiting, claimed, mine, others, contacted }
-  }, [scoped, currentUser])
+  }, [cards, myCrew, currentUser])
 
   const crewLabel = myCrew && myCrew !== 'all' ? CREW_LABEL[myCrew] : 'All crews'
   const first     = (currentUser || '').split(' ')[0] || 'there'
