@@ -4,13 +4,15 @@ import { pcoFetch } from './_lib/pco.js'
 // The signed-in leader, plus their personal text-message template.
 //   GET  /api/me                      → { id, username, global_name, nickname, avatar, crews, textMessage }
 //   POST /api/me { textMessage }      → saves it ('' resets to the app default)
-//   POST /api/me { nickname }         → saves the leader's PCO nickname ('' clears it)
+//   POST /api/me { nickname }         → saves their "YA Nickname" ('' clears it) — a YA Details
+//                                        field, NOT PCO's own nickname, so it never shows elsewhere in PCO
 //   POST /api/me { photo }            → photo = data: URL (JPEG/PNG, resized on the phone);
 //                                        uploaded to PCO and set as their profile photo
 //
 // The template lives on the leader's OWN PCO profile ("YA Text Message", YA Details
 // tab), so it follows them across devices. A leader can only change their own.
 const TEXT_MESSAGE_DEF = '1151583'
+const NICKNAME_DEF     = '1151595'   // "YA Nickname" (YA Details tab) — app-only
 const MAX_LEN = 1000
 const NICKNAME_MAX = 40
 const PHOTO_MAX_BYTES = 2_500_000
@@ -52,11 +54,35 @@ async function uploadPhoto(personId, dataUrl) {
   return realAvatar(attrs.avatar)
 }
 
-async function findDatum(personId) {
+async function findDatum(personId, defId = TEXT_MESSAGE_DEF) {
   const { data } = await pcoFetch(
-    `/people/v2/people/${personId}/field_data?where%5Bfield_definition_id%5D=${TEXT_MESSAGE_DEF}&per_page=1`
+    `/people/v2/people/${personId}/field_data?where%5Bfield_definition_id%5D=${defId}&per_page=1`
   )
   return data?.[0] || null
+}
+
+// Create / update / clear one custom-field value on the leader's own profile
+async function setDatum(personId, defId, value) {
+  const existing = await findDatum(personId, defId)
+  if (!value) {
+    if (existing) await pcoFetch(`/people/v2/field_data/${existing.id}`, { method: 'DELETE' }).catch(() => {})
+  } else if (existing) {
+    await pcoFetch(`/people/v2/field_data/${existing.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ data: { type: 'FieldDatum', id: existing.id, attributes: { value } } }),
+    })
+  } else {
+    await pcoFetch(`/people/v2/people/${personId}/field_data`, {
+      method: 'POST',
+      body: JSON.stringify({
+        data: {
+          type: 'FieldDatum',
+          attributes: { value },
+          relationships: { field_definition: { data: { type: 'FieldDefinition', id: defId } } },
+        },
+      }),
+    })
+  }
 }
 
 export default async function handler(req, res) {
@@ -79,11 +105,11 @@ export default async function handler(req, res) {
     const nickname = String(req.body.nickname || '').trim().replace(/\s+/g, ' ')
     if (nickname.length > NICKNAME_MAX) return res.status(422).json({ error: `Keep it under ${NICKNAME_MAX} characters` })
     try {
-      const attrs = await setPerson(personId, { nickname: nickname || null })
-      return res.json({ ok: true, nickname: attrs.nickname || '' })
+      await setDatum(personId, NICKNAME_DEF, nickname)
+      return res.json({ ok: true, nickname })
     } catch (err) {
       console.error('me.js nickname error:', err.message)
-      return res.status(500).json({ error: "Couldn't save your nickname to Planning Center" })
+      return res.status(500).json({ error: "Couldn't save your nickname" })
     }
   }
 
@@ -92,26 +118,7 @@ export default async function handler(req, res) {
     const text = String(req.body?.textMessage ?? '').trim()
     if (text.length > MAX_LEN) return res.status(422).json({ error: `Keep it under ${MAX_LEN} characters` })
     try {
-      const existing = await findDatum(personId)
-      if (!text) {
-        if (existing) await pcoFetch(`/people/v2/field_data/${existing.id}`, { method: 'DELETE' }).catch(() => {})
-      } else if (existing) {
-        await pcoFetch(`/people/v2/field_data/${existing.id}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ data: { type: 'FieldDatum', id: existing.id, attributes: { value: text } } }),
-        })
-      } else {
-        await pcoFetch(`/people/v2/people/${personId}/field_data`, {
-          method: 'POST',
-          body: JSON.stringify({
-            data: {
-              type: 'FieldDatum',
-              attributes: { value: text },
-              relationships: { field_definition: { data: { type: 'FieldDefinition', id: TEXT_MESSAGE_DEF } } },
-            },
-          }),
-        })
-      }
+      await setDatum(personId, TEXT_MESSAGE_DEF, text)
       return res.json({ ok: true, textMessage: text })
     } catch (err) {
       console.error('me.js save error:', err)
@@ -121,12 +128,13 @@ export default async function handler(req, res) {
 
   let textMessage = '', nickname = '', avatar = user.avatar || null
   if (isPcoId) {
-    const [datum, person] = await Promise.all([
+    const [datum, nick, person] = await Promise.all([
       findDatum(personId).catch(err => { console.error('me.js read error:', err.message); return null }),
+      findDatum(personId, NICKNAME_DEF).catch(() => null),
       getPerson(personId).catch(err => { console.error('me.js person error:', err.message); return {} }),
     ])
     textMessage = datum?.attributes?.value || ''
-    nickname    = person.nickname || ''
+    nickname    = nick?.attributes?.value || ''
     avatar      = realAvatar(person.avatar) || avatar
   }
 
@@ -134,7 +142,7 @@ export default async function handler(req, res) {
     id:          user.id,
     username:    user.username,
     global_name: user.global_name,   // full name — the identity used on claims and notes
-    nickname,                        // what they like to be called (greeting, profile)
+    nickname,                        // "YA Nickname" — what they like to be called in this app
     avatar,
     // From the leader's PCO Crew field at sign-in (see auth/magic-request.js).
     crews:       user.crews || [],

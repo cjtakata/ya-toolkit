@@ -214,7 +214,7 @@ function NicknameField({ user, onSave }) {
         {status === 'saving' && <span className="save-indicator saving">Saving…</span>}
         {status === 'saved'  && <span className="save-indicator saved"><Check size={12} />Saved</span>}
       </div>
-      <p className="profile-hint">Your nickname for the greeting and your profile. Saved to Planning Center.</p>
+      <p className="profile-hint">Used in the greeting and your profile here. It's only for this app; it won't change your name anywhere else in Planning Center.</p>
       <form className="nickname-row" onSubmit={e => { e.preventDefault(); if (dirty) save() }}>
         <input className="login-input" value={value} maxLength={40}
           placeholder={(user.global_name || '').split(' ')[0] || 'Nickname'}
