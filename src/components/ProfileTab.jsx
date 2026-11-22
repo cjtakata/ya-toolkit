@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { Check, LogOut, MessageCircle, Camera } from 'lucide-react'
+import { Check, LogOut, MessageCircle, Camera, Pencil, ChevronDown } from 'lucide-react'
+import PickerRow from './PickerRow.jsx'
 import { CREW_OPTIONS, CREW_LABEL } from './listMeta.js'
 import { DEFAULT_MESSAGE, PLACEHOLDERS, renderMessage } from './cardMeta.js'
 
@@ -44,25 +45,19 @@ export default function ProfileTab({ user, myCrew = 'all', onChooseCrew, onLogou
           <div className="profile-role">YA Leader</div>
         </div>
 
-        <NicknameField user={user} onSave={onSaveProfile} />
-
         <section className="home-section">
           <div className="home-section-head">
-            <h2>Your crew</h2>
+            <h2>About you</h2>
           </div>
-          <p className="profile-hint">Home and People focus on this crew. Saved on this device.</p>
-          <div className="settings-group" role="radiogroup" aria-label="Your crew">
-            {CREW_OPTIONS.map(o => {
-              const on = (myCrew || 'all') === o.key
-              return (
-                <button key={o.key} className={`settings-row${on ? ' selected' : ''}`}
-                  role="radio" aria-checked={on} onClick={() => onChooseCrew(o.key)}>
-                  <span>{o.label}</span>
-                  {on && <Check size={16} />}
-                </button>
-              )
-            })}
+          <div className="attr-group">
+            <NicknameRow user={user} onSave={onSaveProfile} />
+            <PickerRow label="Crew" value={CREW_LABEL[myCrew || 'all']} allowEmpty={false}
+              options={CREW_OPTIONS.map(o => o.label)}
+              onChange={label => onChooseCrew(CREW_OPTIONS.find(o => o.label === label)?.key || 'all')} />
           </div>
+          <p className="profile-hint attr-hint">
+            Your nickname is only used in this app. Home and People focus on your crew.
+          </p>
         </section>
 
         <MessageEditor user={user} myCrew={myCrew} onSave={onSaveMessage} />
@@ -84,6 +79,7 @@ function MessageEditor({ user, myCrew, onSave }) {
   const saved = user.textMessage || ''
   const [text, setText]     = useState(saved || DEFAULT_MESSAGE)
   const [status, setStatus] = useState('')        // '' | 'saving' | 'saved' | error message
+  const [open, setOpen]     = useState(false)     // composer collapsed until they tap Edit
   const ref = useRef(null)
 
   useEffect(() => { setText(saved || DEFAULT_MESSAGE) }, [saved])
@@ -93,14 +89,14 @@ function MessageEditor({ user, myCrew, onSave }) {
     const el = ref.current
     if (el && el.offsetParent) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px' }
   }
-  useEffect(fit, [text])
+  useEffect(fit, [text, open])
   useEffect(() => {
     const el = ref.current
     if (!el || typeof ResizeObserver === 'undefined') return
     const ro = new ResizeObserver(() => fit())
     ro.observe(el.parentElement)
     return () => ro.disconnect()
-  }, [])
+  }, [open])
 
   const dirty     = text.trim() !== (saved || DEFAULT_MESSAGE).trim()
   const isDefault = text.trim() === DEFAULT_MESSAGE
@@ -123,11 +119,16 @@ function MessageEditor({ user, myCrew, onSave }) {
       // Saving the default text stores nothing, so future default tweaks reach this leader.
       await onSave(value.trim() === DEFAULT_MESSAGE ? '' : value)
       setStatus('saved')
+      setOpen(false)
       setTimeout(() => setStatus(''), 2000)
     } catch (err) {
       setStatus(err.message)
     }
   }
+
+  const savedPreview = renderMessage(saved || DEFAULT_MESSAGE, {
+    guestFirst: 'Levi', leaderFirst: (user.global_name || '').split(' ')[0], crew,
+  })
 
   return (
     <section className="home-section">
@@ -136,11 +137,20 @@ function MessageEditor({ user, myCrew, onSave }) {
         {status === 'saving' && <span className="save-indicator saving">Saving…</span>}
         {status === 'saved'  && <span className="save-indicator saved"><Check size={12} />Saved</span>}
       </div>
-      <p className="profile-hint">
-        What opens in Messages when you tap <strong>Text</strong> on a new guest. You can still tweak it before sending.
-        Saved to your Planning Center profile, so it's the same on every device.
-      </p>
+      <div className={`attr-group msg-group${open ? ' open' : ''}`}>
+        <button type="button" className="msg-toggle" aria-expanded={open} onClick={() => setOpen(o => !o)}>
+          <span className="msg-toggle-text">
+            <span className="picker-label">{saved ? 'Custom message' : 'Default message'}</span>
+            {!open && <span className="msg-toggle-sub">{savedPreview}</span>}
+          </span>
+          <span className="msg-toggle-action">{open ? 'Close' : 'Edit'}<ChevronDown size={15} /></span>
+        </button>
+      {open && (
       <div className="msg-editor">
+        <p className="profile-hint">
+          What opens in Messages when you tap <strong>Text</strong> on a new guest. You can still tweak it before sending.
+          Saved to your Planning Center profile, so it's the same on every device.
+        </p>
         <textarea ref={ref} className="msg-input" rows={4} maxLength={1000}
           value={text} onChange={e => { setText(e.target.value); setStatus('') }} />
         <div className="msg-tokens">
@@ -168,6 +178,8 @@ function MessageEditor({ user, myCrew, onSave }) {
           </button>
         </div>
       </div>
+      )}
+      </div>
     </section>
   )
 }
@@ -192,36 +204,57 @@ function squarePhoto(file, size = 512) {
   })
 }
 
-// ── "What should we call you?" — saved as the PCO nickname ─────────────
-function NicknameField({ user, onSave }) {
-  const [value, setValue]   = useState(user.nickname || '')
-  const [status, setStatus] = useState('')
-  useEffect(() => { setValue(user.nickname || '') }, [user.nickname])
+// ── Nickname: shown as a row (Nickname · Connor ✎); tap to edit in place.
+// Saved to "YA Nickname" on their PCO profile — never PCO's own nickname.
+function NicknameRow({ user, onSave }) {
+  const [editing, setEditing] = useState(false)
+  const [value, setValue]     = useState(user.nickname || '')
+  const [status, setStatus]   = useState('')
+  const inputRef = useRef(null)
+  useEffect(() => { if (!editing) setValue(user.nickname || '') }, [user.nickname, editing])
+  useEffect(() => { if (editing) inputRef.current?.focus() }, [editing])
   const dirty = value.trim() !== (user.nickname || '')
 
-  async function save() {
+  async function save(e) {
+    e?.preventDefault()
+    if (!dirty) { setEditing(false); return }
     setStatus('saving')
     try {
       await onSave({ nickname: value.trim() })
-      setStatus('saved'); setTimeout(() => setStatus(''), 2000)
+      setStatus(''); setEditing(false)
     } catch (err) { setStatus(err.message) }
+  }
+  function cancel() { setValue(user.nickname || ''); setStatus(''); setEditing(false) }
+
+  if (!editing) {
+    return (
+      <div className="picker-row">
+        <button type="button" className="picker-trigger" onClick={() => setEditing(true)}>
+          <span className="picker-label">Nickname</span>
+          <span className={`picker-value${user.nickname ? '' : ' empty'}`}>
+            {user.nickname || 'Add'}<Pencil size={14} />
+          </span>
+        </button>
+      </div>
+    )
   }
 
   return (
-    <section className="home-section">
-      <div className="home-section-head">
-        <h2>What should we call you?</h2>
-        {status === 'saving' && <span className="save-indicator saving">Saving…</span>}
-        {status === 'saved'  && <span className="save-indicator saved"><Check size={12} />Saved</span>}
-      </div>
-      <p className="profile-hint">Used in the greeting and your profile here. It's only for this app; it won't change your name anywhere else in Planning Center.</p>
-      <form className="nickname-row" onSubmit={e => { e.preventDefault(); if (dirty) save() }}>
-        <input className="login-input" value={value} maxLength={40}
+    <form className="picker-row attr-edit" onSubmit={save}>
+      <label className="attr-edit-field">
+        <span className="picker-label">Nickname</span>
+        <input ref={inputRef} className="attr-input" value={value} maxLength={40}
           placeholder={(user.global_name || '').split(' ')[0] || 'Nickname'}
-          onChange={e => { setValue(e.target.value); if (!['saving'].includes(status)) setStatus('') }} />
-        <button className="login-btn" type="submit" disabled={!dirty || status === 'saving'}>Save</button>
-      </form>
-      {status && !['saving', 'saved'].includes(status) && <div className="login-error" style={{ marginTop: 8 }}>{status}</div>}
-    </section>
+          onChange={e => { setValue(e.target.value); setStatus('') }}
+          onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); cancel() } }} />
+      </label>
+      {status && status !== 'saving' && <div className="login-error attr-error">{status}</div>}
+      <div className="attr-actions">
+        <button type="button" className="msg-reset" onClick={cancel}>Cancel</button>
+        <button type="submit" className="login-btn attr-save" disabled={status === 'saving'}>
+          {status === 'saving' ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+    </form>
   )
 }

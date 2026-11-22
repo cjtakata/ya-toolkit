@@ -10,12 +10,12 @@ export default function PickerRow({ label, value, options, onChange, emptyLabel 
   useEffect(() => {
     if (!open) return
     const onDown = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
-    const onKey  = e => { if (e.key === 'Escape') setOpen(false) }
+    const onKey  = e => { if (e.key === 'Escape') { e.preventDefault(); setOpen(false) } }
     document.addEventListener('pointerdown', onDown)
-    document.addEventListener('keydown', onKey)
+    document.addEventListener('keydown', onKey, true)   // capture: before the sheet's Escape
     // keep the menu in view when it opens near the bottom of a scrolling sheet
     requestAnimationFrame(() => ref.current?.querySelector('.picker-menu')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }))
-    return () => { document.removeEventListener('pointerdown', onDown); document.removeEventListener('keydown', onKey) }
+    return () => { document.removeEventListener('pointerdown', onDown); document.removeEventListener('keydown', onKey, true) }
   }, [open])
 
   const shown = (value || '').trim()

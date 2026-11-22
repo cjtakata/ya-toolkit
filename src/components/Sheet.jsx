@@ -35,7 +35,8 @@ export default function Sheet({ open, title = null, showTitle = true, tall = fal
 
   useEffect(() => {
     if (!open) return
-    const onKey = e => { if (e.key === 'Escape') onCloseRef.current() }
+    // an open menu or field inside the sheet handles Escape first (preventDefault)
+    const onKey = e => { if (e.key === 'Escape' && !e.defaultPrevented) onCloseRef.current() }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [open])
