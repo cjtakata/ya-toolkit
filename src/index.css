@@ -168,8 +168,11 @@ svg.lucide { vertical-align: middle; }
 .app-screen {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  height: 100dvh;
+  /* Pin to the screen's edges instead of height: 100vh/100%. On iPhone, a
+     home-screen web app with a translucent status bar reports 100%/100vh as
+     shorter than the real screen, leaving a dead strip under the lists. */
+  position: fixed;
+  inset: 0;
 }
 
 .tab-view {
