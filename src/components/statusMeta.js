@@ -9,6 +9,7 @@ const STATUS_CLASS = {
   movedon:        'badge-status-movedon',
   firsttimeguest: 'badge-status-ftg',
   leader:         'badge-status-leader',
+  serving:        'badge-status-serving',
   archived:       'badge-status-movedon',
 }
 
