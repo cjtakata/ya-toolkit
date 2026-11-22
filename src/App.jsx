@@ -2,7 +2,14 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import LoginScreen from './components/LoginScreen.jsx'
 import PeopleList from './components/PeopleList.jsx'
 import DetailPanel from './components/DetailPanel.jsx'
-import TabBar from './components/TabBar.jsx'
+import AppTopBar from './components/AppTopBar.jsx'
+import Sheet from './components/Sheet.jsx'
+import { CREW_LABEL } from './components/listMeta.js'
+
+function greeting() {
+  const h = new Date().getHours()
+  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
+}
 import HomeTab from './components/HomeTab.jsx'
 import ProfileTab from './components/ProfileTab.jsx'
 
@@ -37,8 +44,8 @@ export default function App() {
   return <AuthenticatedApp user={user} onUserChange={u => setUser(prev => ({ ...prev, ...u }))} onLogout={() => setUser(null)} />
 }
 
-// URL hash routes: #/home · #/search · #/profile · #/person/<id> (opens over the current tab)
-const TABS = ['home', 'search', 'profile']
+// URL hash routes: #/home · #/search · #/profile (Profile sheet over Home) · #/person/<id> (over the current tab)
+const TABS = ['home', 'search']
 function parseHashId() {
   const m = window.location.hash.match(/^#\/person\/(.+)$/)
   return m ? m[1] : null
@@ -64,7 +71,11 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
   const [crewOptions, setCrewOptions]     = useState([])
   const [statusOptions, setStatusOptions] = useState([])
   const [preset, setPreset]           = useState(readUrlPreset)
-  const [tab, setTab]                 = useState(() => parseHashTab() || (readUrlPreset() ? 'search' : 'home'))
+  const [tab, setTab]                 = useState(() => {
+    const t = parseHashTab()
+    return t && t !== 'profile' ? t : (readUrlPreset() ? 'search' : 'home')
+  })
+  const [profileOpen, setProfileOpen] = useState(() => parseHashTab() === 'profile')
   const currentUser = user.global_name || user.username || 'Leader'
 
   // "My crew" preference: a manual pick (saved per-device) wins; otherwise fall
@@ -156,19 +167,20 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
   // it); switching tabs just replaces the hash. Query-string filters are dropped
   // once applied so a reload doesn't re-apply them.
   useEffect(() => {
-    const newHash = selectedId ? `#/person/${selectedId}` : `#/${tab}`
+    const newHash = selectedId ? `#/person/${selectedId}` : profileOpen ? '#/profile' : `#/${tab}`
     if (window.location.hash === newHash && !window.location.search) return
     const url = window.location.pathname + newHash
     if (selectedId && parseHashId() !== selectedId) history.pushState(null, '', url)
     else history.replaceState(null, '', url)
-  }, [selectedId, tab])
+  }, [selectedId, tab, profileOpen])
 
   // Handle browser back/forward
   useEffect(() => {
     function onPop() {
       setSelectedId(parseHashId())
       const t = parseHashTab()
-      if (t) setTab(t)
+      setProfileOpen(t === 'profile')
+      if (t && t !== 'profile') setTab(t)
     }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
@@ -237,6 +249,15 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
 
   return (
     <div className="app-screen">
+      <AppTopBar
+        tab={tab} onChange={changeTab} user={user} badge={waitingCount}
+        title={tab === 'home' ? `${greeting()}, ${currentUser.split(' ')[0]}` : 'People'}
+        subtitle={tab === 'search'
+          ? `${allPeople.length} people in Planning Center`
+          : `${myCrew && myCrew !== 'all' ? CREW_LABEL[myCrew] : 'All crews'} · ${myCrew && myCrew !== 'all' ? people.filter(p => p.list === myCrew).length : people.length} people`}
+        onSubtitleClick={tab === 'home' ? () => setProfileOpen(true) : null}
+        onOpenProfile={() => setProfileOpen(true)}
+      />
       <div className="app-body">
         <div className={`tab-view${tab === 'home' ? '' : ' tab-hidden'}`}>
           <HomeTab
@@ -252,7 +273,7 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
             selectedId={selectedId}
             onSelect={setSelectedId}
             onSeeAll={openSearch}
-            onChangeCrew={() => changeTab('profile')}
+            onChangeCrew={() => setProfileOpen(true)}
           />
         </div>
         {/* Search stays mounted so filters survive switching tabs */}
@@ -270,10 +291,6 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
             currentUser={currentUser}
           />
         </div>
-        <div className={`tab-view${tab === 'profile' ? '' : ' tab-hidden'}`}>
-          <ProfileTab user={user} myCrew={myCrew} onChooseCrew={chooseCrew} onLogout={handleLogout}
-            onSaveMessage={saveTextMessage} />
-        </div>
         <DetailPanel
           person={selectedPerson}
           crewOptions={crewOptions}
@@ -282,12 +299,15 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
           textTemplate={user.textMessage || ''}
           card={selectedPerson ? cardsByPerson[selectedPerson.id] || null : null}
           onCardAction={handleCardAction}
-          backLabel={tab === 'home' ? 'Home' : tab === 'search' ? 'People' : 'Back'}
+          backLabel={tab === 'home' ? 'Home' : 'People'}
           onClose={() => setSelectedId(null)}
           onSave={handleSave}
         />
       </div>
-      <TabBar tab={tab} onChange={changeTab} user={user} badge={waitingCount} />
+      <Sheet open={profileOpen} title="Profile" onClose={() => setProfileOpen(false)}>
+        <ProfileTab user={user} myCrew={myCrew} onChooseCrew={chooseCrew} onLogout={handleLogout}
+          onSaveMessage={saveTextMessage} />
+      </Sheet>
     </div>
   )
 }

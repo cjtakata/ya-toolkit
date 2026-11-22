@@ -12,8 +12,7 @@ export default function ProfileTab({ user, myCrew = 'all', onChooseCrew, onLogou
   const email    = user.username && user.username.includes('@') ? user.username : null
 
   return (
-    <div className="home-scroll">
-      <div className="home-inner">
+    <div className="profile-sheet">
         <div className="profile-card">
           <div className="profile-avatar">
             {user.avatar ? <img src={user.avatar} alt="" /> : initials}
@@ -56,7 +55,6 @@ export default function ProfileTab({ user, myCrew = 'all', onChooseCrew, onLogou
             </button>
           </div>
         </section>
-      </div>
     </div>
   )
 }

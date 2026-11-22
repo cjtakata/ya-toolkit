@@ -73,10 +73,6 @@ export default function PeopleList({
 
   return (
     <div className="people-pane">
-      <div className="tab-head">
-        <h1>People</h1>
-        <span>{people.length} in Planning Center</span>
-      </div>
       {hasCrew && myCrewStats && (
         <div className="mycrew-banner">
           <div>

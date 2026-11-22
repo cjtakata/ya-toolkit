@@ -1,14 +1,10 @@
 import { useMemo, useState } from 'react'
-import { UserRoundSearch, Hand, Clock, MessageCircleHeart, PartyPopper, ChevronRight, RefreshCw } from 'lucide-react'
+import { UserRoundSearch, Hand, Clock, MessageCircleHeart, PartyPopper, RefreshCw } from 'lucide-react'
 import CardRow from './CardRow.jsx'
 import { CREW_LABEL } from './listMeta.js'
 
 const PREVIEW = 6
 
-function greeting() {
-  const h = new Date().getHours()
-  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
-}
 
 const byOldest = key => (a, b) => (a[key] || '').localeCompare(b[key] || '')
 const byNewest = key => (a, b) => (b[key] || '').localeCompare(a[key] || '')
@@ -35,9 +31,7 @@ export default function HomeTab({
     return { waiting, claimed, mine, others, contacted }
   }, [scoped, currentUser])
 
-  const first     = (currentUser || '').split(' ')[0] || 'there'
   const crewLabel = myCrew && myCrew !== 'all' ? CREW_LABEL[myCrew] : 'All crews'
-  const scopeCount = (myCrew && myCrew !== 'all') ? people.filter(p => p.list === myCrew).length : people.length
   const jump = id => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
   const row = c => (
@@ -49,12 +43,6 @@ export default function HomeTab({
   return (
     <div className="home-scroll">
       <div className="home-inner">
-        <header className="home-head">
-          <div className="home-hello">{greeting()}, {first}</div>
-          <button className="home-scope" onClick={onChangeCrew}>
-            {crewLabel} · {scopeCount} people <ChevronRight size={14} />
-          </button>
-        </header>
 
         <div className="stat-grid">
           <button className="stat stat-amber" onClick={() => jump('home-waiting')}>
