@@ -210,6 +210,7 @@ function AuthenticatedApp({ user, onLogout }) {
           crewOptions={crewOptions}
           statusOptions={statusOptions}
           currentUser={currentUser}
+          backLabel={tab === 'home' ? 'Home' : tab === 'search' ? 'People' : 'Back'}
           onClose={() => setSelectedId(null)}
           onSave={handleSave}
         />

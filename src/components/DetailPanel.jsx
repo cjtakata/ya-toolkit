@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Check, Link2, X, ExternalLink, Flag, UserCheck, User } from 'lucide-react'
+import { Check, Link2, ChevronLeft, ExternalLink, Flag, UserCheck, User } from 'lucide-react'
 import { LIST_META } from './listMeta.js'
 
 const CREW_FALLBACK   = ['College Life', 'Early Career', 'Young Professional']
@@ -35,7 +35,7 @@ function formatNoteDate(iso) {
     : { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-export default function DetailPanel({ person, crewOptions = [], statusOptions = [], currentUser, onClose, onSave }) {
+export default function DetailPanel({ person, crewOptions = [], statusOptions = [], currentUser, backLabel = 'Back', onClose, onSave }) {
   const crewChoices   = crewOptions.length   ? crewOptions   : CREW_FALLBACK
   const statusChoices = statusOptions.length ? statusOptions : STATUS_FALLBACK
   const [draft, setDraft]       = useState(null)
@@ -222,6 +222,14 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
   return (
     <div className={`detail-pane${window.innerWidth <= 700 ? ' open' : ''}`}>
       <div className="detail-header">
+        <div className="detail-nav">
+          <button className="back-btn" onClick={onClose}>
+            <ChevronLeft size={20} strokeWidth={2.4} />{backLabel}
+          </button>
+          <button className={`copy-link-btn${copied ? ' copied' : ''}`} onClick={handleCopyLink} title="Copy link to this profile">
+            {copied ? <><Check size={13} />Copied</> : <><Link2 size={13} />Copy Link</>}
+          </button>
+        </div>
         <div className="detail-header-top">
           <div className="detail-person">
             <div className="detail-avatar" style={{ background: person.color }}>
@@ -235,12 +243,6 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
                   </a>
                 : <div className="detail-email">No email on file</div>}
             </div>
-          </div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button className={`copy-link-btn${copied ? ' copied' : ''}`} onClick={handleCopyLink} title="Copy link to this profile">
-              {copied ? <><Check size={13} />Copied</> : <><Link2 size={13} />Copy Link</>}
-            </button>
-            <button className="close-btn" onClick={onClose} aria-label="Close"><X size={17} /></button>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
