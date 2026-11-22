@@ -87,11 +87,15 @@ export default function Sheet({ open, title = null, tall = false, onClose, child
       const farEnough = dy > (sheet.offsetHeight || 600) * CLOSE_DISTANCE
       const flicked   = speed > FLICK_SPEED && dy > FLICK_MIN
       if (farEnough || flicked) {
-        // Hand off to the normal close animation: it eases from wherever the
-        // finger left the sheet (transitions start from the current position).
-        sheet.style.transition = ''
+        // Finish the close at the speed the finger let go with — no slow start.
+        // Ease-OUT only, timed from the distance left and the release speed.
+        const remaining = Math.max(0, (sheet.offsetHeight || 600) - dy)
+        const v  = Math.max(speed, 1.1)                         // px per ms; a slow drag still finishes briskly
+        const ms = Math.round(Math.min(320, Math.max(160, remaining / v)))
+        const curve = `${ms}ms cubic-bezier(.2,.75,.35,1)`
+        sheet.style.transition = `transform ${curve}`
         sheet.style.transform = ''
-        if (backRef.current) { backRef.current.style.transition = ''; backRef.current.style.opacity = '' }
+        if (backRef.current) { backRef.current.style.transition = `opacity ${curve}`; backRef.current.style.opacity = '' }
         onCloseRef.current()
       } else {
         paint(0, true)   // ease back into place
@@ -112,6 +116,19 @@ export default function Sheet({ open, title = null, tall = false, onClose, child
     const pm = e => { if (e.pointerType === 'mouse') move(e.clientY, e) }
     const pu = e => { if (e.pointerType === 'mouse') end() }
 
+    // A swipe that starts in the sheet stays in the sheet. If the content is too
+    // short to scroll (or the swipe isn't in the content), stop the browser from
+    // handing it to the page underneath.
+    const layer = sheet.parentElement
+    const keepInSheet = e => {
+      if (active || e.touches.length > 1) return       // drags handled above; let pinch zoom through
+      const body = bodyRef.current
+      const scrollable = body && body.contains(e.target) && body.scrollHeight > body.clientHeight + 1
+      const ownScroll = e.target.closest?.('textarea')
+      if (!scrollable && !ownScroll && e.cancelable) e.preventDefault()
+    }
+    layer.addEventListener('touchmove', keepInSheet, { passive: false })
+
     sheet.addEventListener('touchstart', ts, { passive: true })
     sheet.addEventListener('touchmove', tm, { passive: false })
     sheet.addEventListener('touchend', end)
@@ -120,6 +137,7 @@ export default function Sheet({ open, title = null, tall = false, onClose, child
     window.addEventListener('pointermove', pm)
     window.addEventListener('pointerup', pu)
     return () => {
+      layer.removeEventListener('touchmove', keepInSheet)
       sheet.removeEventListener('touchstart', ts)
       sheet.removeEventListener('touchmove', tm)
       sheet.removeEventListener('touchend', end)

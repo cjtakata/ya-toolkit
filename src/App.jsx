@@ -73,6 +73,12 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
   const [profileOpen, setProfileOpen] = useState(() => parseHashTab() === 'profile')
   const currentUser = user.global_name || user.username || 'Leader'
 
+  // The page itself never scrolls while signed in (see html.app-shell in index.css)
+  useEffect(() => {
+    document.documentElement.classList.add('app-shell')
+    return () => document.documentElement.classList.remove('app-shell')
+  }, [])
+
   // "My crew" preference: a manual pick (saved per-device) wins; otherwise fall
   // back to the crew from the leader's PCO Crew field; otherwise All crews.
   const [myCrew, setMyCrew] = useState(() => {

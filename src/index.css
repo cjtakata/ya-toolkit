@@ -26,7 +26,12 @@ body {
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
+  min-height: 100dvh;   /* iPhone Safari: 100vh is taller than the visible screen */
 }
+
+/* Signed in, every list scrolls inside its own pane — pin the page itself so it
+   can't scroll or bounce under the app (or under an open sheet). */
+html.app-shell, html.app-shell body { height: 100%; overflow: hidden; overscroll-behavior: none; }
 
 /* ── Loading / auth ────────────────────────────────────────── */
 .loading-screen {
