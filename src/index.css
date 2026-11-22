@@ -249,13 +249,11 @@ svg.lucide { vertical-align: middle; }
   box-shadow: 0 -8px 32px rgba(0,0,0,.18);
   transform: translateY(100%); transition: transform .42s cubic-bezier(.65,0,.35,1);
 }
-.sheet-tall { height: calc(100% - max(24px, env(safe-area-inset-top)) - 12px); background: var(--surface); }
+.sheet-tall { height: calc(100% - max(24px, env(safe-area-inset-top)) - 12px); }
 
 /* A person inside a sheet (phones): the sheet scrolls, not the panel */
 .detail-sheet { display: flex; flex-direction: column; margin: 0 -16px; }
-.detail-sheet .detail-header { padding-top: 6px; }
 .detail-sheet .detail-body { overflow: visible; flex: none; }
-.detail-nav-sheet { margin: -4px 0 0; justify-content: flex-end; }
 .sheet-done-inline {
   background: none; border: none; cursor: pointer; font-family: inherit;
   font-size: var(--fs-body); font-weight: var(--fw-bold); color: var(--primary); padding: 6px 0 6px 6px;
@@ -499,7 +497,11 @@ svg.lucide { vertical-align: middle; }
 .detail-header-top {
   display: flex; align-items: flex-start; justify-content: space-between;
 }
-.detail-person { display: flex; align-items: center; gap: 12px; }
+.detail-person { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.detail-person > div { min-width: 0; }
+/* phone sheet: Done inline with the photo + name, top-aligned like a nav-bar button */
+.detail-done { flex-shrink: 0; align-self: flex-start; margin: -2px 0 0 8px; }
+.detail-sheet .detail-header { padding-top: 4px; }
 .detail-avatar {
   width: 52px; height: 52px; border-radius: 50%;
   font-size: 20px; font-weight: var(--fw-bold); color: #fff;
@@ -634,9 +636,9 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
 
 .note-compose { position: relative; margin-bottom: 16px; }
 .note-compose-input {
-  border: 1.5px solid var(--border); border-radius: 8px;
+  border: 1px solid var(--border); border-radius: 12px;
   padding: 9px 64px 9px 12px; font-size: var(--fs-footnote); font-family: inherit;
-  background: var(--bg); color: var(--text); outline: none;
+  background: var(--surface); color: var(--text); outline: none;
   resize: none; line-height: 1.5; width: 100%; min-height: 64px;
   transition: border-color .15s, background .15s;
 }

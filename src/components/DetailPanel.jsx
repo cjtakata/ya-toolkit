@@ -170,11 +170,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
   return (
     <div className={isSheet ? 'detail-sheet' : 'detail-pane'}>
       <div className="detail-header">
-        {isSheet ? (
-          <div className="detail-nav detail-nav-sheet" data-sheet-handle>
-            <button className="sheet-done-inline" onClick={onClose}>Done</button>
-          </div>
-        ) : (
+        {!isSheet && (
           <div className="detail-nav">
             <button className="back-btn" onClick={onClose}>
               <ChevronLeft size={20} strokeWidth={2.4} />{backLabel}
@@ -182,7 +178,8 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
           </div>
         )}
         <div className="detail-header-top">
-          <div className="detail-person">
+          {/* On phones Done sits inline at the top right of this row (no row of its own) */}
+          <div className="detail-person" {...(isSheet ? { 'data-sheet-handle': true } : {})}>
             <Avatar person={person} className="detail-avatar" />
             <div>
               <div className="detail-name">{person.name}</div>
@@ -193,6 +190,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
                 : <div className="detail-email">No email on file</div>}
             </div>
           </div>
+          {isSheet && <button className="sheet-done-inline detail-done" onClick={onClose}>Done</button>}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <a
