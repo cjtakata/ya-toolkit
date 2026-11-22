@@ -19,6 +19,17 @@ function sessionFrom(payload) {
   })
 }
 
+// Wrong-code limit per sign-in attempt (best-effort per warm instance; the
+// Vercel firewall rate-limits /api/auth/* per IP as the hard backstop).
+const MAX_TRIES = 5
+const wrongTries = new Map()   // challenge id → wrong guesses
+function tooManyTries(id) { return id && (wrongTries.get(id) || 0) >= MAX_TRIES }
+function noteWrongTry(id) {
+  if (!id) return
+  wrongTries.set(id, (wrongTries.get(id) || 0) + 1)
+  if (wrongTries.size > 10000) wrongTries.clear()
+}
+
 export default async function handler(req, res) {
   // ── Code entry from inside the app (works in the iOS home-screen PWA) ──
   if (req.method === 'POST') {
@@ -32,11 +43,22 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'That code has expired. Request a new one.' })
     }
 
+    if (payload.typ !== 'challenge') return res.status(401).json({ error: 'That code has expired. Request a new one.' })
+
+    if (tooManyTries(payload.jti)) {
+      return res.status(429).json({ error: 'Too many tries. Request a new code.' })
+    }
+
     const expected = payload.codeHash || ''
     const actual   = hashCode(String(code).trim())
     const ok = expected.length === actual.length &&
                timingSafeEqual(Buffer.from(expected), Buffer.from(actual))
-    if (!ok) return res.status(401).json({ error: 'Incorrect code. Double-check and try again.' })
+    if (!ok || !payload.pcoId) {
+      noteWrongTry(payload.jti)
+      return res.status(401).json({ error: tooManyTries(payload.jti)
+        ? 'Too many tries. Request a new code.'
+        : 'Incorrect code. Double-check and try again.' })
+    }
 
     res.setHeader('Set-Cookie', await sessionFrom(payload))
     return res.json({ ok: true })
@@ -47,7 +69,8 @@ export default async function handler(req, res) {
   if (!token) return res.redirect('/people?error=missing_token')
   try {
     const { payload } = await jwtVerify(token, secret())
-    if (!payload.pcoId || !payload.name) return res.redirect('/people?error=invalid_token')
+    // Only an emailed link token may sign in here — never a challenge (which the browser can see)
+    if (payload.typ !== 'link' || !payload.pcoId || !payload.name) return res.redirect('/people?error=invalid_token')
     res.setHeader('Set-Cookie', await sessionFrom(payload))
     return res.redirect('/people')
   } catch {

@@ -94,7 +94,7 @@ export default function LoginScreen() {
         ) : (
           <form className="login-form" onSubmit={verifyCode}>
             <div className="login-subtitle">
-              We sent a 6-digit code to <strong>{email.trim()}</strong>. It expires in 15 minutes.
+              If <strong>{email.trim()}</strong> belongs to a YA leader, a 6-digit code is on its way. It expires in 15 minutes.
             </div>
             <input
               className="login-input login-code"

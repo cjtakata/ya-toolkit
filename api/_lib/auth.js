@@ -1,4 +1,5 @@
 import { SignJWT, jwtVerify } from 'jose'
+import { pcoFetch } from './pco.js'
 
 const COOKIE = 'ya_session'
 
@@ -47,6 +48,30 @@ export function clearSessionCookie() {
   return cookieStr(COOKIE, '', { httpOnly: true, maxAge: 0 })
 }
 
+// Leader status is re-checked against PCO every few minutes, so removing someone's
+// "Leader" YA Status ends their access within LEADER_TTL — not when their 30-day
+// session runs out.
+const STATUS_DEF = '1065431'
+const LEADER_TTL = 5 * 60_000
+const leaderCache = new Map()   // pcoId → { ok, at }
+async function stillLeader(pcoId) {
+  const hit = leaderCache.get(pcoId)
+  if (hit && Date.now() - hit.at < LEADER_TTL) return hit.ok
+  try {
+    const { data } = await pcoFetch(
+      `/people/v2/people/${pcoId}/field_data?where%5Bfield_definition_id%5D=${STATUS_DEF}&per_page=1`
+    )
+    const ok = data?.[0]?.attributes?.value === 'Leader'
+    leaderCache.set(pcoId, { ok, at: Date.now() })
+    if (leaderCache.size > 2000) leaderCache.clear()
+    return ok
+  } catch (err) {
+    // PCO hiccup: keep the last known answer rather than locking everyone out
+    console.error('leader re-check failed:', err.message)
+    return hit ? hit.ok : true
+  }
+}
+
 export async function requireAuth(req, res) {
   const cookies = parseCookies(req)
   const token   = cookies[COOKIE]
@@ -60,6 +85,11 @@ export async function requireAuth(req, res) {
     // login don't, so those leaders are asked to sign in again by email.
     if (payload.auth !== 'pco') {
       res.status(401).json({ error: 'Please sign in again' })
+      return null
+    }
+    if (!/^\d+$/.test(String(payload.id)) || !(await stillLeader(String(payload.id)))) {
+      res.setHeader('Set-Cookie', clearSessionCookie())
+      res.status(401).json({ error: 'Your YA Leader access has ended' })
       return null
     }
     return payload

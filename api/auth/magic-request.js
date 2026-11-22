@@ -1,5 +1,5 @@
 import { SignJWT } from 'jose'
-import { createHmac, randomInt } from 'node:crypto'
+import { createHmac, randomInt, randomUUID } from 'node:crypto'
 import { pcoFetch, getFieldDefinitions } from '../_lib/pco.js'
 
 function secret() {
@@ -61,11 +61,18 @@ export default async function handler(req, res) {
   if (!email?.trim()) return res.status(400).json({ error: 'Email is required' })
   const normalizedEmail = email.trim().toLowerCase()
 
+  // Every email gets the same reply and moves on to the code screen, so the
+  // sign-in can't be used to learn who's in PCO or who's a leader. Emails that
+  // aren't a YA Leader get a decoy challenge and no email (any code fails).
+  const decoy = async () => {
+    const challenge = await new SignJWT({ typ: 'challenge', jti: randomUUID(), codeHash: hashCode(randomUUID()) })
+      .setProtectedHeader({ alg: 'HS256' }).setExpirationTime('15m').sign(secret())
+    return res.json({ ok: true, challenge })
+  }
+
   try {
     const personIds = await findPeopleByEmail(normalizedEmail)
-    if (!personIds.length) {
-      return res.status(404).json({ error: 'No one in Planning Center has that email.' })
-    }
+    if (!personIds.length) return decoy()
 
     // Access rule: YA Status = "Leader". If several people share the email,
     // the first one who is a leader wins.
@@ -74,9 +81,7 @@ export default async function handler(req, res) {
     for (const id of personIds) {
       if (await isLeader(id, fieldDefs)) { leaderId = id; break }
     }
-    if (!leaderId) {
-      return res.status(403).json({ error: "That email isn't marked as a YA Leader in Planning Center." })
-    }
+    if (!leaderId) return decoy()
     const person = await getPerson(leaderId)
     if (!person) return res.status(500).json({ error: 'Something went wrong' })
 
@@ -89,13 +94,15 @@ export default async function handler(req, res) {
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0')
 
     // Stateless challenge held by the client; carries identity + a hash of the code.
-    const challenge = await new SignJWT({ ...identity, codeHash: hashCode(code) })
+    // typ separates the two tokens: a challenge only works with its code (POST);
+    // only a link token (emailed, never shown to the browser) signs in via GET.
+    const challenge = await new SignJWT({ ...identity, typ: 'challenge', jti: randomUUID(), codeHash: hashCode(code) })
       .setProtectedHeader({ alg: 'HS256' })
       .setExpirationTime('15m')
       .sign(secret())
 
     // Self-contained link token for desktop click-through (sets cookie in the browser).
-    const linkToken = await new SignJWT(identity)
+    const linkToken = await new SignJWT({ ...identity, typ: 'link' })
       .setProtectedHeader({ alg: 'HS256' })
       .setExpirationTime('15m')
       .sign(secret())
