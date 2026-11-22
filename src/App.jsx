@@ -255,6 +255,19 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
     return updated
   }
 
+  // Nickname or photo → the leader's own PCO profile (see api/me.js)
+  async function saveProfile(change) {
+    const res = await fetch('/api/me', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(change),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error || `Couldn't save (HTTP ${res.status})`)
+    if ('nickname' in change) onUserChange({ nickname: data.nickname })
+    if ('photo' in change)    onUserChange({ avatar: data.avatar })
+  }
+
   async function saveTextMessage(textMessage) {
     const res = await fetch('/api/me', {
       method: 'POST',
@@ -282,6 +295,7 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
       <div className="app-body">
         <div className={`tab-view${tab === 'home' ? '' : ' tab-hidden'}`}>
           <HomeTab
+            greetName={user.nickname || currentUser.split(' ')[0]}
             cards={currentCards}
             cardsLoading={cardsLoading}
             cardsError={cardsError}
@@ -318,6 +332,7 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
           statusOptions={statusOptions}
           currentUser={currentUser}
           textTemplate={user.textMessage || ''}
+          leaderFirst={user.nickname || currentUser.split(' ')[0]}
           card={selectedPerson ? cardsByPerson[selectedPerson.id] || null : null}
           onCardAction={handleCardAction}
           backLabel={tab === 'home' ? 'Home' : 'People'}
@@ -334,6 +349,7 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
           statusOptions={statusOptions}
           currentUser={currentUser}
           textTemplate={user.textMessage || ''}
+          leaderFirst={user.nickname || currentUser.split(' ')[0]}
           card={sheetPerson ? cardsByPerson[sheetPerson.id] || null : null}
           onCardAction={handleCardAction}
           backLabel={tab === 'home' ? 'Home' : 'People'}
@@ -344,7 +360,7 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
       )}
       <Sheet open={profileOpen} title="Profile" showTitle={false} onClose={() => setProfileOpen(false)}>
         <ProfileTab user={user} myCrew={myCrew} onChooseCrew={chooseCrew} onLogout={handleLogout}
-          onSaveMessage={saveTextMessage} />
+          onSaveMessage={saveTextMessage} onSaveProfile={saveProfile} />
       </Sheet>
     </div>
   )

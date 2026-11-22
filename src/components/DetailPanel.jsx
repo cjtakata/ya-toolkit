@@ -37,7 +37,7 @@ function formatNoteDate(iso) {
     : { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-export default function DetailPanel({ person, crewOptions = [], statusOptions = [], currentUser, textTemplate = '', backLabel = 'Back', variant = 'pane', card = null, onCardAction, onClose, onSave }) {
+export default function DetailPanel({ person, crewOptions = [], statusOptions = [], currentUser, textTemplate = '', leaderFirst = '', backLabel = 'Back', variant = 'pane', card = null, onCardAction, onClose, onSave }) {
   const isSheet = variant === 'sheet'   // phones: shown inside a slide-up Sheet
   const crewChoices   = crewOptions.length   ? crewOptions   : CREW_FALLBACK
   const statusChoices = statusOptions.length ? statusOptions : STATUS_FALLBACK
@@ -245,7 +245,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
 
         {card && (
           <CardSection
-            card={card} person={person} currentUser={currentUser} textTemplate={textTemplate} busy={cardBusy}
+            card={card} person={person} currentUser={currentUser} textTemplate={textTemplate} leaderFirst={leaderFirst} busy={cardBusy}
             confirming={confirmText} onTextOpened={() => setConfirmText(true)}
             onAction={cardAction} onCancelConfirm={() => setConfirmText(false)}
           />
@@ -315,11 +315,11 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
 
 
 // ── Connection card: claimed? texted? ──────────────────────────────
-function CardSection({ card, person, currentUser, textTemplate, busy, confirming, onTextOpened, onAction, onCancelConfirm }) {
+function CardSection({ card, person, currentUser, textTemplate, leaderFirst, busy, confirming, onTextOpened, onAction, onCancelConfirm }) {
   const mine     = card.claimedBy && card.claimedBy === currentUser
   const first    = person.name.split(' ')[0]
   const crewName = (person.crew || '').trim()
-  const body     = renderMessage(textTemplate, { guestFirst: first, leaderFirst: (currentUser || '').split(' ')[0], crew: crewName })
+  const body     = renderMessage(textTemplate, { guestFirst: first, leaderFirst: leaderFirst || (currentUser || '').split(' ')[0], crew: crewName })
   const submitted = `Card ${shortDate(card.submittedAt)} · ${timeAgo(card.submittedAt)}`
 
   const textButton = person.phone ? (

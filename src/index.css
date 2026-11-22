@@ -1051,3 +1051,22 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
 .picker-option.on { color: var(--primary); font-weight: var(--fw-semibold); }
 .picker-option.muted { color: var(--muted); }
 .picker-check { width: 20px; display: flex; justify-content: center; color: var(--primary); flex-shrink: 0; }
+
+/* ── Profile: change photo, nickname ─────────────────────── */
+.profile-avatar-edit { position: relative; border: none; padding: 0; cursor: pointer; overflow: visible; font-family: inherit; }
+.profile-avatar-edit img { border-radius: 50%; }
+.profile-avatar-edit:disabled { cursor: default; }
+.profile-avatar-badge {
+  position: absolute; right: -2px; bottom: -2px; width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface); color: var(--primary); box-shadow: 0 1px 4px rgba(0,0,0,.2);
+}
+.profile-avatar-spin {
+  position: absolute; inset: 0; border-radius: 50%; background: rgba(255,255,255,.55);
+  border: 3px solid transparent; border-top-color: var(--primary); animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.profile-photo-err { margin-top: 6px; font-size: var(--fs-footnote); color: var(--danger); }
+.nickname-row { display: flex; gap: 8px; }
+.nickname-row .login-input { flex: 1; min-width: 0; }
+.nickname-row .login-btn { width: auto; padding: 0 18px; }

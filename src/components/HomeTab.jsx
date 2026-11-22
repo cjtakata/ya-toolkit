@@ -17,7 +17,7 @@ const byNewest = key => (a, b) => (b[key] || '').localeCompare(a[key] || '')
 // Home: connection-card follow-up for the leader's crew.
 //   Who filled out a card → who claimed them → have they been texted?
 export default function HomeTab({
-  cards, cardsError, cardsLoading, onRefresh, people, myCrew = 'all', currentUser,
+  greetName, cards, cardsError, cardsLoading, onRefresh, people, myCrew = 'all', currentUser,
   selectedId, onSelect, onSeeAll, onChangeCrew, onClaim, busyCard,
 }) {
   const [showAllDone, setShowAllDone] = useState(false)
@@ -50,7 +50,7 @@ export default function HomeTab({
     <div className="home-scroll">
       <div className="home-inner">
         <header className="section-head">
-          <h1 className="section-title">{greeting()}, {first}</h1>
+          <h1 className="section-title">{greeting()}, {greetName || first}</h1>
         </header>
 
 

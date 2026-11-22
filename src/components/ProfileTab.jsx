@@ -1,24 +1,50 @@
 import { useState, useRef, useEffect } from 'react'
-import { Check, LogOut, MessageCircle } from 'lucide-react'
+import { Check, LogOut, MessageCircle, Camera } from 'lucide-react'
 import { CREW_OPTIONS, CREW_LABEL } from './listMeta.js'
 import { DEFAULT_MESSAGE, PLACEHOLDERS, renderMessage } from './cardMeta.js'
 
 // Profile: who's signed in, which crew the app focuses on, and sign out.
-export default function ProfileTab({ user, myCrew = 'all', onChooseCrew, onLogout, onSaveMessage }) {
+export default function ProfileTab({ user, myCrew = 'all', onChooseCrew, onLogout, onSaveMessage, onSaveProfile }) {
   const name     = user.global_name || user.username || 'Leader'
   const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
   const email    = user.username && user.username.includes('@') ? user.username : null
+  const fileRef  = useRef(null)
+  const [photoBusy, setPhotoBusy] = useState(false)
+  const [photoErr, setPhotoErr]   = useState('')
+
+  async function pickPhoto(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''                      // let the same photo be picked again later
+    if (!file) return
+    setPhotoBusy(true); setPhotoErr('')
+    try {
+      const photo = await squarePhoto(file)
+      await onSaveProfile({ photo })
+    } catch (err) {
+      setPhotoErr(err.message || "Couldn't update your photo")
+    } finally {
+      setPhotoBusy(false)
+    }
+  }
 
   return (
     <div className="profile-sheet">
         <div className="profile-card">
-          <div className="profile-avatar">
+          <button type="button" className={`profile-avatar profile-avatar-edit${photoBusy ? ' busy' : ''}`}
+            onClick={() => fileRef.current?.click()} disabled={photoBusy} aria-label="Change your photo">
             {user.avatar ? <img src={user.avatar} alt="" /> : initials}
-          </div>
-          <div className="profile-name">{name}</div>
+            <span className="profile-avatar-badge" aria-hidden="true"><Camera size={14} strokeWidth={2.4} /></span>
+            {photoBusy && <span className="profile-avatar-spin" aria-hidden="true" />}
+          </button>
+          <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickPhoto} />
+          {photoErr && <div className="profile-photo-err">{photoErr}</div>}
+          <div className="profile-name">{user.nickname || name}</div>
+          {user.nickname && <div className="profile-email">{name}</div>}
           {email && <div className="profile-email">{email}</div>}
           <div className="profile-role">YA Leader</div>
         </div>
+
+        <NicknameField user={user} onSave={onSaveProfile} />
 
         <section className="home-section">
           <div className="home-section-head">
@@ -142,6 +168,60 @@ function MessageEditor({ user, myCrew, onSave }) {
           </button>
         </div>
       </div>
+    </section>
+  )
+}
+
+// Square-crop and shrink a picked photo on the phone (512px JPEG) before upload —
+// keeps it fast and well under upload limits.
+function squarePhoto(file, size = 512) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      const side = Math.min(img.naturalWidth, img.naturalHeight)
+      const canvas = document.createElement('canvas')
+      canvas.width = canvas.height = size
+      canvas.getContext('2d').drawImage(img,
+        (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, size, size)
+      URL.revokeObjectURL(url)
+      resolve(canvas.toDataURL('image/jpeg', 0.86))
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("That file isn't a photo we can use")) }
+    img.src = url
+  })
+}
+
+// ── "What should we call you?" — saved as the PCO nickname ─────────────
+function NicknameField({ user, onSave }) {
+  const [value, setValue]   = useState(user.nickname || '')
+  const [status, setStatus] = useState('')
+  useEffect(() => { setValue(user.nickname || '') }, [user.nickname])
+  const dirty = value.trim() !== (user.nickname || '')
+
+  async function save() {
+    setStatus('saving')
+    try {
+      await onSave({ nickname: value.trim() })
+      setStatus('saved'); setTimeout(() => setStatus(''), 2000)
+    } catch (err) { setStatus(err.message) }
+  }
+
+  return (
+    <section className="home-section">
+      <div className="home-section-head">
+        <h2>What should we call you?</h2>
+        {status === 'saving' && <span className="save-indicator saving">Saving…</span>}
+        {status === 'saved'  && <span className="save-indicator saved"><Check size={12} />Saved</span>}
+      </div>
+      <p className="profile-hint">Your nickname for the greeting and your profile. Saved to Planning Center.</p>
+      <form className="nickname-row" onSubmit={e => { e.preventDefault(); if (dirty) save() }}>
+        <input className="login-input" value={value} maxLength={40}
+          placeholder={(user.global_name || '').split(' ')[0] || 'Nickname'}
+          onChange={e => { setValue(e.target.value); if (!['saving'].includes(status)) setStatus('') }} />
+        <button className="login-btn" type="submit" disabled={!dirty || status === 'saving'}>Save</button>
+      </form>
+      {status && !['saving', 'saved'].includes(status) && <div className="login-error" style={{ marginTop: 8 }}>{status}</div>}
     </section>
   )
 }
