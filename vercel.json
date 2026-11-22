@@ -14,13 +14,18 @@
   ],
   "redirects": [
     {
+      "source": "/",
+      "destination": "/people",
+      "permanent": false
+    },
+    {
       "source": "/calendar",
-      "destination": "/",
+      "destination": "/people",
       "permanent": false
     },
     {
       "source": "/calendar/:path*",
-      "destination": "/",
+      "destination": "/people",
       "permanent": false
     }
   ]

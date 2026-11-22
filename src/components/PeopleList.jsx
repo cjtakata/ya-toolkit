@@ -7,35 +7,32 @@ const LIST_OPTIONS = CREW_OPTIONS
 
 export default function PeopleList({
   people, loading, error, statusOptions = [],
-  myCrew = 'all', selectedId, onSelect, currentUser,
+  myCrew = 'all', preset = null, selectedId, onSelect, currentUser,
 }) {
   const hasCrew = myCrew && myCrew !== 'all'
 
-  // Deep links from the Hub, e.g. /people?followup=unclaimed&crew=college
-  const [linked] = useState(() => {
-    const q = new URLSearchParams(window.location.search)
-    const fu   = q.get('followup')
-    const crew = q.get('crew')
-    return {
-      followup: ['needs', 'unclaimed', 'none'].includes(fu) ? fu : null,
-      crew:     crew && (crew === 'all' || CREW_LABEL[crew]) ? crew : null,
-    }
-  })
-
-  const [list, setList]         = useState(() => linked.crew || (linked.followup ? 'all' : myCrew || 'all'))
+  const [list, setList]         = useState(() => myCrew || 'all')
   const [gender, setGender]     = useState('all')
-  const [followup, setFollowup] = useState(() => linked.followup || 'all')
+  const [followup, setFollowup] = useState('all')
   const [status, setStatus]     = useState('all')
   const [search, setSearch]     = useState('')
   const [sort, setSort]         = useState('name')
 
-  // When the leader changes their crew in the profile bar, focus the list on it.
-  // (Skipped on first render so a Hub deep link's crew isn't overwritten.)
+  // When the leader changes their crew on the Profile tab, focus the list on it.
   const firstRun = useRef(true)
   useEffect(() => {
     if (firstRun.current) { firstRun.current = false; return }
     setList(myCrew || 'all')
   }, [myCrew])
+
+  // A filter handed over from Home (or a ?followup=… link). Each new preset
+  // replaces the current filters; crew defaults to the leader's crew.
+  useEffect(() => {
+    if (!preset) return
+    const fu = ['needs', 'unclaimed', 'none'].includes(preset.followup) ? preset.followup : 'all'
+    const crew = preset.crew && (preset.crew === 'all' || CREW_LABEL[preset.crew]) ? preset.crew : (myCrew || 'all')
+    setList(crew); setFollowup(fu); setStatus(preset.status || 'all'); setGender('all'); setSearch('')
+  }, [preset]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const myCrewStats = useMemo(() => {
     if (!hasCrew) return null
@@ -78,6 +75,10 @@ export default function PeopleList({
 
   return (
     <div className="people-pane">
+      <div className="tab-head">
+        <h1>People</h1>
+        <span>{people.length} in Planning Center</span>
+      </div>
       {hasCrew && myCrewStats && (
         <div className="mycrew-banner">
           <div>

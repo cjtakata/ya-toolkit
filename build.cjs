@@ -1,6 +1,5 @@
-// Post-build: assemble the Hub + People app into dist/
-//   dist/              ← Hub (root)
-//   dist/people/       ← React People app (built by Vite)
+// Post-build: put the PWA icons + manifest at the dist root.
+//   dist/people/       ← React app (built by Vite); "/" redirects here (vercel.json)
 const fs   = require('fs')
 const path = require('path')
 
@@ -9,11 +8,7 @@ function copy(src, dest) {
   fs.copyFileSync(src, dest)
 }
 
-// Hub → dist root
-copy('hub.html', 'dist/index.html')
-console.log('✓  Hub        → dist/index.html')
-
-// Icons & manifest at dist root (Hub needs them)
+// Icons & manifest at dist root (manifest.json is linked as /manifest.json)
 ;['icon-192.png','icon-512.png','apple-touch-icon.png','ya.svg','manifest.json'].forEach(f => {
   const src = path.join('public', f)
   if (fs.existsSync(src)) {
@@ -24,5 +19,4 @@ console.log('✓  Assets     → dist/')
 
 console.log('\n✅  Post-build complete')
 console.log('   dist/')
-console.log('   ├── index.html          (Hub)')
-console.log('   └── people/             (React app)')
+console.log('   └── people/             (React app — Home · Search · Profile)')

@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import LoginScreen from './components/LoginScreen.jsx'
-import AppHeader from './components/AppHeader.jsx'
 import PeopleList from './components/PeopleList.jsx'
 import DetailPanel from './components/DetailPanel.jsx'
+import TabBar from './components/TabBar.jsx'
+import HomeTab from './components/HomeTab.jsx'
+import ProfileTab from './components/ProfileTab.jsx'
 
 function LoadingScreen({ label, progress }) {
   return (
@@ -35,9 +37,23 @@ export default function App() {
   return <AuthenticatedApp user={user} onLogout={() => setUser(null)} />
 }
 
+// URL hash routes: #/home · #/search · #/profile · #/person/<id> (opens over the current tab)
+const TABS = ['home', 'search', 'profile']
 function parseHashId() {
   const m = window.location.hash.match(/^#\/person\/(.+)$/)
   return m ? m[1] : null
+}
+function parseHashTab() {
+  const m = window.location.hash.match(/^#\/(home|search|profile)$/)
+  return m ? m[1] : null
+}
+
+// Filter links like /people?followup=unclaimed&crew=college open the Search tab pre-filtered.
+function readUrlPreset() {
+  const q = new URLSearchParams(window.location.search)
+  const followup = q.get('followup'), crew = q.get('crew'), status = q.get('status')
+  if (!followup && !crew && !status) return null
+  return { followup, crew, status, n: 0 }
 }
 
 function AuthenticatedApp({ user, onLogout }) {
@@ -47,9 +63,12 @@ function AuthenticatedApp({ user, onLogout }) {
   const [selectedId, setSelectedId]   = useState(parseHashId)
   const [crewOptions, setCrewOptions]     = useState([])
   const [statusOptions, setStatusOptions] = useState([])
+  const [preset, setPreset]           = useState(readUrlPreset)
+  const [tab, setTab]                 = useState(() => parseHashTab() || (readUrlPreset() ? 'search' : 'home'))
+  const currentUser = user.global_name || user.username || 'Leader'
 
   // "My crew" preference: a manual pick (saved per-device) wins; otherwise fall
-  // back to the crew implied by the user's Discord role; otherwise All crews.
+  // back to the crew from the leader's PCO Crew field; otherwise All crews.
   const [myCrew, setMyCrew] = useState(() => {
     const saved = localStorage.getItem('ya_my_crew')
     if (saved) return saved
@@ -91,20 +110,44 @@ function AuthenticatedApp({ user, onLogout }) {
     return () => clearTimeout(t)
   }, [])
 
-  // Keep the URL hash in sync with the selected person
+  // Keep the URL hash in sync: opening a person pushes history (so Back closes
+  // it); switching tabs just replaces the hash. Query-string filters are dropped
+  // once applied so a reload doesn't re-apply them.
   useEffect(() => {
-    const newHash = selectedId ? `#/person/${selectedId}` : ''
-    if (window.location.hash !== newHash) {
-      history.pushState(null, '', newHash || window.location.pathname)
-    }
-  }, [selectedId])
+    const newHash = selectedId ? `#/person/${selectedId}` : `#/${tab}`
+    if (window.location.hash === newHash && !window.location.search) return
+    const url = window.location.pathname + newHash
+    if (selectedId && parseHashId() !== selectedId) history.pushState(null, '', url)
+    else history.replaceState(null, '', url)
+  }, [selectedId, tab])
 
   // Handle browser back/forward
   useEffect(() => {
-    function onPop() { setSelectedId(parseHashId()) }
+    function onPop() {
+      setSelectedId(parseHashId())
+      const t = parseHashTab()
+      if (t) setTab(t)
+    }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
   }, [])
+
+  function changeTab(t) {
+    if (!TABS.includes(t)) return
+    setSelectedId(null)
+    setTab(t)
+  }
+
+  // From Home: jump to Search with a filter applied
+  function openSearch(filter) {
+    setPreset(prev => ({ ...filter, n: (prev?.n || 0) + 1 }))
+    changeTab('search')
+  }
+
+  const unclaimedCount = useMemo(() => {
+    const scoped = myCrew && myCrew !== 'all' ? people.filter(p => p.list === myCrew) : people
+    return scoped.filter(p => p.needsFollowup && !(p.assignedLeader || '').trim()).length
+  }, [people, myCrew])
 
   const selectedPerson = people.find(p => p.id === selectedId) ?? null
 
@@ -133,33 +176,45 @@ function AuthenticatedApp({ user, onLogout }) {
 
   return (
     <div className="app-screen">
-      <AppHeader
-        user={user}
-        onLogout={handleLogout}
-        listCount={people.length}
-        myCrew={myCrew}
-        onChooseCrew={chooseCrew}
-      />
       <div className="app-body">
-        <PeopleList
-          people={people}
-          loading={loading}
-          error={error}
-          statusOptions={statusOptions}
-          myCrew={myCrew}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          currentUser={user.global_name || user.username || 'Leader'}
-        />
+        <div className={`tab-view${tab === 'home' ? '' : ' tab-hidden'}`}>
+          <HomeTab
+            people={people}
+            myCrew={myCrew}
+            currentUser={currentUser}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            onSeeAll={openSearch}
+            onChangeCrew={() => changeTab('profile')}
+          />
+        </div>
+        {/* Search stays mounted so filters survive switching tabs */}
+        <div className={`tab-view${tab === 'search' ? '' : ' tab-hidden'}`}>
+          <PeopleList
+            people={people}
+            loading={loading}
+            error={error}
+            statusOptions={statusOptions}
+            myCrew={myCrew}
+            preset={preset}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            currentUser={currentUser}
+          />
+        </div>
+        <div className={`tab-view${tab === 'profile' ? '' : ' tab-hidden'}`}>
+          <ProfileTab user={user} myCrew={myCrew} onChooseCrew={chooseCrew} onLogout={handleLogout} />
+        </div>
         <DetailPanel
           person={selectedPerson}
           crewOptions={crewOptions}
           statusOptions={statusOptions}
-          currentUser={user.global_name || user.username || 'Leader'}
+          currentUser={currentUser}
           onClose={() => setSelectedId(null)}
           onSave={handleSave}
         />
       </div>
+      <TabBar tab={tab} onChange={changeTab} user={user} badge={unclaimedCount} />
     </div>
   )
 }
