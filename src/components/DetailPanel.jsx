@@ -319,10 +319,17 @@ function CardSection({ card, person, currentUser, textTemplate, leaderFirst, bus
   const body     = renderMessage(textTemplate, { guestFirst: first, leaderFirst: leaderFirst || (currentUser || '').split(' ')[0], crew: crewName })
   const submitted = `Card ${shortDate(card.submittedAt)} · ${timeAgo(card.submittedAt)}`
 
+  // Already texted them from your own phone? "Mark as texted" skips Messages
+  // and goes straight to the same "Did you send the text?" confirm.
   const textButton = person.phone ? (
-    <a className="fu-log fu-log-mine fu-text-btn" href={smsHref(person.phone, body)} onClick={onTextOpened}>
-      <MessageCircle size={16} /> Text {first}
-    </a>
+    <div className="fu-btn-row">
+      <a className="fu-log fu-log-mine fu-text-btn" href={smsHref(person.phone, body)} onClick={onTextOpened}>
+        <MessageCircle size={16} /> Text {first}
+      </a>
+      <button className="fu-btn-takeover fu-btn-marktexted" onClick={onTextOpened} disabled={busy}>
+        <Check size={15} strokeWidth={3} /> Mark as texted
+      </button>
+    </div>
   ) : (
     <div className="fu-sub">No phone number on file. Reached them another way?
       <button className="fu-inline-link" onClick={() => onAction('texted')} disabled={busy}>Mark as contacted</button>
