@@ -27,9 +27,11 @@ export default function CardRow({ card, currentUser, selected, onOpen, onClaim, 
       <div className="person-info">
         <div className="person-name-row">
           <span className="person-name">{p.name}</span>
-          {lm && <span className={`badge ${lm.badgeCls}`}>{lm.crew}</span>}
         </div>
-        <div className={`card-line${warn ? ' warn' : ''}`}>{line}</div>
+        <div className="card-meta">
+          {lm && <span className={`badge ${lm.badgeCls}`}>{lm.crew}</span>}
+          <span className={`card-line${warn ? ' warn' : ''}`}>{line}</span>
+        </div>
       </div>
       {card.state === 'waiting' && onClaim && (
         <button className="row-claim" disabled={busy}
