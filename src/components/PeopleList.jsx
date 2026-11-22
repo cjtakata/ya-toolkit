@@ -104,12 +104,8 @@ export default function PeopleList({
 
   return (
     <div className="people-pane">
+      {/* Only search + Filters stay pinned; the switcher above already says "People" */}
       <div className="people-top">
-        <header className="people-head">
-          <h1 className="section-title">People</h1>
-          <span className="section-sub">{current.length} in Planning Center</span>
-        </header>
-
         <div className="people-search-row">
           <div className="search-wrap">
             <Search className="search-icon" size={15} />
@@ -122,16 +118,6 @@ export default function PeopleList({
           </button>
         </div>
 
-        {activeChips.length > 0 && (
-          <div className="active-chips">
-            {activeChips.map(c => (
-              <button key={c.key} className="active-chip" onClick={c.clear} aria-label={`Remove filter ${c.label}`}>
-                {c.label}<X size={13} strokeWidth={2.5} />
-              </button>
-            ))}
-          </div>
-        )}
-        <div className="people-count">{visible.length} {visible.length === 1 ? 'person' : 'people'}</div>
       </div>
 
       <Sheet open={filtersOpen} title="Filters" onClose={() => setFiltersOpen(false)}>
@@ -155,6 +141,22 @@ export default function PeopleList({
       </Sheet>
 
       <div className="people-list">
+        {/* Active filters + count scroll away with the results */}
+        <div className="people-list-head">
+          {activeChips.length > 0 && (
+            <div className="active-chips">
+              {activeChips.map(c => (
+                <button key={c.key} className="active-chip" onClick={c.clear} aria-label={`Remove filter ${c.label}`}>
+                  {c.label}<X size={13} strokeWidth={2.5} />
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="people-count">
+            {visible.length} {visible.length === 1 ? 'person' : 'people'}
+            {activeCount === 0 && !search && ` · ${current.length} in Planning Center`}
+          </div>
+        </div>
         {loading && <div className="empty-state">Loading people from PCO…</div>}
         {error   && <div className="empty-state" style={{ color: 'var(--danger)' }}>{error}</div>}
         {!loading && !error && visible.length === 0 && (

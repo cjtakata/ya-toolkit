@@ -928,7 +928,7 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
 .msg-save { width: auto; padding: 10px 18px; }
 
 /* ── People: compact header, Filters sheet ───────────────── */
-.people-top { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 16px 8px; }
+.people-top { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 16px; }
 .people-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
 .people-head .section-sub { margin-top: 0; }
 .people-search-row { display: flex; gap: 8px; align-items: stretch; }
@@ -943,14 +943,15 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
   min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; line-height: 18px; text-align: center;
   background: var(--primary); color: #fff; font-size: var(--fs-caption); font-weight: var(--fw-bold);
 }
-.active-chips { display: flex; gap: 6px; overflow-x: auto; margin-top: 10px; scrollbar-width: none; }
+.people-list-head { padding: 6px 8px 4px; }
+.active-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
 .active-chips::-webkit-scrollbar { display: none; }
 .active-chip {
   display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; white-space: nowrap;
   padding: 5px 8px 5px 11px; border-radius: 99px; border: none; cursor: pointer;
   background: var(--primary-light); color: var(--primary); font-family: inherit; font-size: var(--fs-footnote); font-weight: var(--fw-semibold);
 }
-.people-count { font-size: var(--fs-footnote); color: var(--muted); margin-top: 10px; }
+.people-count { font-size: var(--fs-footnote); color: var(--muted); }
 
 .filter-sheet { display: flex; flex-direction: column; gap: 18px; padding-top: 4px; }
 .fchoices-label { font-size: var(--fs-caption); font-weight: var(--fw-bold); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 8px; }
