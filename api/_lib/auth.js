@@ -72,6 +72,34 @@ async function stillLeader(pcoId) {
   }
 }
 
+// ── Admins ──────────────────────────────────────────────────────
+// Admins can assign a leader to a guest's card and remove a guest from the
+// follow-up workflow. The list is PCO person ids, comma-separated, in the
+// YA_ADMIN_PCO_IDS env var. Until that's set, Connor (83780614) is the only admin.
+const DEFAULT_ADMINS = '83780614'
+export function adminIds() {
+  return new Set(String(process.env.YA_ADMIN_PCO_IDS || DEFAULT_ADMINS)
+    .split(',').map(s => s.trim()).filter(s => /^\d+$/.test(s)))
+}
+export function isAdmin(user) {
+  return !!user && adminIds().has(String(user.id))
+}
+
+// Is this PCO person a current YA Leader? Used when an admin assigns a guest.
+// Unlike stillLeader, this fails closed: if PCO can't answer, the answer is no.
+export async function isLeaderPerson(pcoId) {
+  if (!/^\d+$/.test(String(pcoId))) return false
+  try {
+    const { data } = await pcoFetch(
+      `/people/v2/people/${pcoId}/field_data?where%5Bfield_definition_id%5D=${STATUS_DEF}&per_page=1`
+    )
+    return data?.[0]?.attributes?.value === 'Leader'
+  } catch (err) {
+    console.error('leader check for assign failed:', err.message)
+    return false
+  }
+}
+
 export async function requireAuth(req, res) {
   const cookies = parseCookies(req)
   const token   = cookies[COOKIE]

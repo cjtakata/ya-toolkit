@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Check, Link2, ChevronLeft, ExternalLink, Flag, UserCheck, User, MessageCircle, Inbox, Hand, Undo2, CircleCheck, CircleMinus, Workflow } from 'lucide-react'
+import { Check, Link2, ChevronLeft, ExternalLink, Flag, UserCheck, User, MessageCircle, Inbox, Hand, Undo2, CircleCheck, CircleMinus, Workflow, ShieldCheck } from 'lucide-react'
 import { LIST_META } from './listMeta.js'
 import PickerRow from './PickerRow.jsx'
 import { timeAgo, duration, shortDate, renderMessage, smsHref } from './cardMeta.js'
@@ -37,7 +37,7 @@ function formatNoteDate(iso) {
     : { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-export default function DetailPanel({ person, crewOptions = [], statusOptions = [], currentUser, textTemplate = '', leaderFirst = '', backLabel = 'Back', variant = 'pane', card = null, onCardAction, onClose, onSave }) {
+export default function DetailPanel({ person, crewOptions = [], statusOptions = [], currentUser, textTemplate = '', leaderFirst = '', backLabel = 'Back', variant = 'pane', card = null, onCardAction, isAdmin = false, leaders = [], onClose, onSave }) {
   const isSheet = variant === 'sheet'   // phones: shown inside a slide-up Sheet
   const crewChoices   = crewOptions.length   ? crewOptions   : CREW_FALLBACK
   const statusChoices = statusOptions.length ? statusOptions : STATUS_FALLBACK
@@ -114,11 +114,11 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
     }
   }
 
-  async function cardAction(action) {
+  async function cardAction(action, extra) {
     if (!card || !onCardAction) return
     setCardBusy(true)
     try {
-      await onCardAction(card, action)
+      await onCardAction(card, action, extra)
       loadFeed()                       // show the new claim / text in the history
     } catch (err) {
       alert(err.message)
@@ -246,6 +246,10 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
             confirming={confirmText} onTextOpened={() => setConfirmText(true)}
             onAction={cardAction} onCancelConfirm={() => setConfirmText(false)}
           />
+        )}
+        {card && isAdmin && !confirmText && (
+          <AdminCardTools key={card.cardId} card={card} person={person} leaders={leaders}
+            currentUser={currentUser} busy={cardBusy} onAction={cardAction} />
         )}
 
         {/* YA Details custom fields */}
@@ -401,6 +405,65 @@ function CardSection({ card, person, currentUser, textTemplate, leaderFirst, bus
   )
 }
 
+
+// ── Admin only: assign a leader / remove from follow-up ─────────────
+function AdminCardTools({ card, person, leaders, currentUser, busy, onAction }) {
+  const [leaderId, setLeaderId] = useState('')
+  const [confirmRemove, setConfirmRemove] = useState(false)
+  const first = person.name.split(' ')[0]
+  const open  = card.state === 'waiting' || card.state === 'claimed'
+  if (!open) return null   // a texted guest's follow-up is finished; nothing to assign or remove
+  const choices = [...leaders]
+    .filter(l => l.name !== card.claimedBy)
+    .sort((a, b) => a.name.localeCompare(b.name))
+
+  if (confirmRemove) return (
+    <div className="fu-card fu-admin fu-admin-confirm">
+      <div className="fu-title">Remove {first} from follow-up?</div>
+      <div className="fu-sub">Their card leaves the follow-up workflow in Planning Center. Their profile and notes stay.</div>
+      <div className="fu-btn-row">
+        <button className="fu-btn-danger" disabled={busy}
+          onClick={() => onAction('remove').then(() => setConfirmRemove(false))}>
+          {busy ? '…' : 'Remove'}
+        </button>
+        <button className="fu-btn-takeover" onClick={() => setConfirmRemove(false)} disabled={busy}>Cancel</button>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="fu-card fu-admin">
+      <div className="fu-admin-label"><ShieldCheck size={14} /> Admin</div>
+      {open && (
+        <div className="fu-admin-row">
+          <select className="fu-admin-select" value={leaderId} onChange={e => setLeaderId(e.target.value)}
+            aria-label={`Assign ${first} to a leader`} disabled={busy}>
+            <option value="">{card.state === 'claimed' ? 'Reassign to…' : 'Assign to…'}</option>
+            {choices.map(l => (
+              <option key={l.id} value={l.id}>{l.name === currentUser ? `${l.name} (you)` : l.name}</option>
+            ))}
+          </select>
+          <button className="fu-btn-takeover" disabled={busy || !leaderId}
+            onClick={() => onAction('assign', { leaderId }).then(() => setLeaderId(''))}>
+            {busy ? '…' : 'Assign'}
+          </button>
+        </div>
+      )}
+      <div className="fu-admin-row">
+        {card.state === 'claimed' && card.claimedBy && card.claimedBy !== currentUser && (
+          <button className="fu-inline-link" onClick={() => onAction('release')} disabled={busy}>
+            Release {card.claimedBy.split(' ')[0]}'s claim
+          </button>
+        )}
+        {open && (
+          <button className="fu-inline-link fu-link-danger" onClick={() => setConfirmRemove(true)} disabled={busy}>
+            Remove from follow-up
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
 
 // ── A posted note, laid out like the activity rows ──────────────────
 const FEED_PREVIEW = 10

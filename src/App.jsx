@@ -5,7 +5,7 @@ import DetailPanel from './components/DetailPanel.jsx'
 import AppTopBar from './components/AppTopBar.jsx'
 import Sheet from './components/Sheet.jsx'
 
-import HomeTab from './components/HomeTab.jsx'
+import HomeTab, { inCrew } from './components/HomeTab.jsx'
 import ProfileTab from './components/ProfileTab.jsx'
 
 function LoadingScreen({ label, progress }) {
@@ -116,13 +116,14 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [loadCards])
 
-  async function handleCardAction(card, action) {
+  // extra: { leaderId } for an admin's 'assign'
+  async function handleCardAction(card, action, extra = {}) {
     setBusyCard(card.cardId)
     try {
       const res = await fetch('/api/cards', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cardId: card.cardId, action }),
+        body: JSON.stringify({ ...extra, cardId: card.cardId, action }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || `Something went wrong (HTTP ${res.status})`)
@@ -221,9 +222,14 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
   }, [people, currentCards])
 
   const waitingCount = useMemo(() => currentCards.filter(c =>
-    c.state === 'waiting' && (!myCrew || myCrew === 'all' || c.person.list === myCrew)).length, [currentCards, myCrew])
+    c.state === 'waiting' && inCrew(c, myCrew)).length, [currentCards, myCrew])
 
   const selectedPerson = allPeople.find(p => p.id === selectedId) ?? null
+  // Admins pick from these when assigning a guest (YA Status = Leader)
+  const leaders = useMemo(
+    () => user.isAdmin ? people.filter(p => p.status === 'Leader').map(p => ({ id: p.id, name: p.name })) : [],
+    [people, user.isAdmin],
+  )
 
   // Phones show a person in a slide-up sheet; wider screens use the side panel.
   const [isPhone, setIsPhone] = useState(() => window.matchMedia('(max-width: 700px)').matches)
@@ -335,6 +341,8 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
           leaderFirst={user.nickname || currentUser.split(' ')[0]}
           card={selectedPerson ? cardsByPerson[selectedPerson.id] || null : null}
           onCardAction={handleCardAction}
+          isAdmin={!!user.isAdmin}
+          leaders={leaders}
           backLabel={tab === 'home' ? 'Home' : 'People'}
           onClose={() => setSelectedId(null)}
           onSave={handleSave}
@@ -352,6 +360,8 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
           leaderFirst={user.nickname || currentUser.split(' ')[0]}
           card={sheetPerson ? cardsByPerson[sheetPerson.id] || null : null}
           onCardAction={handleCardAction}
+          isAdmin={!!user.isAdmin}
+          leaders={leaders}
           backLabel={tab === 'home' ? 'Home' : 'People'}
           onClose={() => setSelectedId(null)}
           onSave={handleSave}

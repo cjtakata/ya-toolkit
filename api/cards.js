@@ -1,10 +1,13 @@
-import { requireAuth } from './_lib/auth.js'
-import { getFieldDefinitions } from './_lib/pco.js'
+import { requireAuth, isAdmin, isLeaderPerson } from './_lib/auth.js'
+import { getFieldDefinitions, pcoFetch } from './_lib/pco.js'
 import { normalizePerson, fetchPeopleByIds } from './_lib/person.js'
-import { listCards, claimCard, releaseCard, markTexted, CardError } from './_lib/cards.js'
+import { listCards, claimCard, releaseCard, markTexted, removeCard, CardError } from './_lib/cards.js'
 
 // GET  /api/cards                      → connection-card follow-ups (open + last 30 days)
 // POST /api/cards {cardId, action}     → action: 'claim' | 'release' | 'texted'
+//   admins only (see _lib/auth.js):
+// POST /api/cards {cardId, action: 'assign', leaderId}  → claim on that leader's behalf
+// POST /api/cards {cardId, action: 'remove'}            → take the card out of the workflow
 //
 // Short in-memory cache so several leaders opening Home doesn't hammer PCO.
 let _cache = null, _cacheAt = 0
@@ -39,9 +42,31 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       const { cardId, action } = req.body || {}
       if (!/^\d+$/.test(String(cardId))) return res.status(400).json({ error: 'Invalid card id' })
+      const admin = isAdmin(user)
+
+      if (action === 'assign' || action === 'remove') {
+        if (!admin) return res.status(403).json({ error: 'Only YA admins can do that.' })
+        if (action === 'remove') {
+          await removeCard(String(cardId), leader)
+        } else {
+          const leaderId = String(req.body?.leaderId || '')
+          if (!/^\d+$/.test(leaderId)) return res.status(400).json({ error: 'Pick a leader to assign.' })
+          if (!(await isLeaderPerson(leaderId))) return res.status(422).json({ error: "Couldn't confirm that person is a YA Leader. Try again." })
+          // Same name the leader signs in with (first + last), so the claim shows
+          // as theirs on their own Home screen.
+          const { data } = await pcoFetch(`/people/v2/people/${leaderId}`)
+          const name = [data?.attributes?.first_name, data?.attributes?.last_name].filter(Boolean).join(' ')
+          if (!name) return res.status(422).json({ error: "Couldn't find that leader in Planning Center." })
+          // Assigning yourself reads as a plain claim (or a reassignment to you).
+          await claimCard(String(cardId), name, { assignedBy: name === leader ? null : leader, byAdmin: true })
+        }
+        _cache = null
+        return res.json({ ok: true })
+      }
+
       const fn = { claim: claimCard, release: releaseCard, texted: markTexted }[action]
       if (!fn) return res.status(400).json({ error: 'Unknown action' })
-      await fn(String(cardId), leader)
+      await fn(String(cardId), leader, action === 'release' ? { admin } : undefined)
       _cache = null   // next GET reflects the change
       return res.json({ ok: true })
     }
