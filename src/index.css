@@ -1070,3 +1070,16 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
 .nickname-row { display: flex; gap: 8px; }
 .nickname-row .login-input { flex: 1; min-width: 0; }
 .nickname-row .login-btn { width: auto; padding: 0 18px; }
+
+/* ── Activity feed as a timeline: a thread through the icons ─────────── */
+.notes-list { position: relative; }
+.notes-list > .hist-item { position: relative; padding-top: 8px; padding-bottom: 8px; }
+.notes-list > .hist-item .hist-icon { position: relative; z-index: 1; box-shadow: 0 0 0 3px var(--surface); }
+.notes-list > .hist-item::before {
+  content: ''; position: absolute; left: 15px; width: 2px; top: 0; bottom: 0;
+  background: var(--border); border-radius: 1px;
+}
+/* start the thread at the first icon and stop it at the last */
+.notes-list > .hist-item:first-child::before { top: 19px; }
+.notes-list > .hist-item:last-of-type::before { bottom: calc(100% - 19px); }
+.notes-list > .hist-item:only-of-type::before { display: none; }
