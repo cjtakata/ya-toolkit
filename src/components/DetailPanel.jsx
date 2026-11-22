@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Check, Link2, ChevronLeft, ExternalLink, Flag, UserCheck, User, MessageCircle, Inbox, Hand, Undo2, CircleCheck, CircleMinus, Workflow } from 'lucide-react'
+import { Check, Link2, ChevronLeft, ChevronsUpDown, ExternalLink, Flag, UserCheck, User, MessageCircle, Inbox, Hand, Undo2, CircleCheck, CircleMinus, Workflow } from 'lucide-react'
 import { LIST_META } from './listMeta.js'
 import { timeAgo, duration, shortDate, renderMessage, smsHref } from './cardMeta.js'
 
@@ -48,6 +48,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
   // Comment-style notes (PCO Notes under the "Young Adults" category)
   const [notes, setNotes]             = useState([])
   const [notesLoading, setNotesLoading] = useState(false)
+  const [showAllActivity, setShowAllActivity] = useState(false)
   const [noteText, setNoteText]       = useState('')
   const [posting, setPosting]         = useState(false)
   const [cardBusy, setCardBusy]       = useState(false)
@@ -70,6 +71,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
 
     // Load notes for this person
     setNotes([])
+    setShowAllActivity(false)
     setNoteText('')
     setConfirmText(false)
     loadFeed()
@@ -257,38 +259,30 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
               : null}
           </div>
 
-          <div className="field-stack-wrap">
-            <div className="field-stack">
-              <div className="field-label">YA Status</div>
-              <select
-                className="field-select"
-                value={draft.status}
-                onChange={e => update('status', e.target.value)}
-              >
-                <option value="">— Not set —</option>
-                {statusChoices.map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
+          <div className="picker-group">
+            <label className="picker-row">
+              <span className="picker-label">YA Status</span>
+              <span className={`picker-value${draft.status ? '' : ' empty'}`}>
+                {draft.status || 'Not set'}<ChevronsUpDown size={15} />
+              </span>
+              <select className="picker-native" value={draft.status} aria-label="YA Status"
+                onChange={e => update('status', e.target.value)}>
+                <option value="">Not set</option>
+                {statusChoices.map(v => <option key={v} value={v}>{v}</option>)}
               </select>
-            </div>
-          </div>
-
-          <div className="field-stack-wrap">
-            <div className="field-stack">
-              <div className="field-label">Crew</div>
-              <select
-                className="field-select"
-                value={draft.crew}
-                onChange={e => update('crew', e.target.value)}
-              >
-                <option value="">— Not assigned —</option>
-                {crewChoices.map(c => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
+            </label>
+            <label className="picker-row">
+              <span className="picker-label">Crew</span>
+              <span className={`picker-value${draft.crew ? '' : ' empty'}`}>
+                {(draft.crew || '').trim() || 'Not assigned'}<ChevronsUpDown size={15} />
+              </span>
+              <select className="picker-native" value={draft.crew} aria-label="Crew"
+                onChange={e => update('crew', e.target.value)}>
+                <option value="">Not assigned</option>
+                {crewChoices.map(v => <option key={v} value={v}>{v.trim()}</option>)}
               </select>
-            </div>
+            </label>
           </div>
-
         </div>
 
         {/* Comment-style notes → PCO Notes under "Young Adults" */}
@@ -320,29 +314,14 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
             <div className="notes-empty">No notes yet. Add the first one above.</div>
           ) : (
             <div className="notes-list">
-              {notes.map(n => n.kind === 'workflow' ? (
-                <HistoryItem key={n.id} item={n} currentUser={currentUser} />
-              ) : (
-                <div className="note-item" key={n.id}>
-                  {n.followup ? (
-                    <div className="note-avatar note-avatar-fu">
-                      <Check size={15} color="#fff" strokeWidth={3} />
-                    </div>
-                  ) : (
-                    <div className="note-avatar" style={{ background: authorColor(n.author) }}>
-                      {authorInitials(n.author)}
-                    </div>
-                  )}
-                  <div className="note-bubble">
-                    <div className="note-meta">
-                      <span className="note-author">{n.author || 'Leader'}</span>
-                      {n.followup && <span className="note-fu-tag">Followed up</span>}
-                      <span className="note-time">{formatNoteDate(n.createdAt)}</span>
-                    </div>
-                    <div className="note-body">{n.body}</div>
-                  </div>
-                </div>
-              ))}
+              {(showAllActivity ? notes : notes.slice(0, FEED_PREVIEW)).map(n => n.kind === 'workflow'
+                ? <HistoryItem key={n.id} item={n} currentUser={currentUser} />
+                : <NoteItem key={n.id} note={n} currentUser={currentUser} />)}
+              {notes.length > FEED_PREVIEW && (
+                <button className="feed-more" onClick={() => setShowAllActivity(v => !v)}>
+                  {showAllActivity ? 'Show less' : `View all activity (${notes.length})`}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -442,6 +421,23 @@ function CardSection({ card, person, currentUser, textTemplate, busy, confirming
   )
 }
 
+
+// ── A posted note, laid out like the activity rows ──────────────────
+const FEED_PREVIEW = 10
+function NoteItem({ note: n, currentUser }) {
+  const who = n.author && n.author === currentUser ? 'You' : (n.author || 'Leader')
+  return (
+    <div className="hist-item hist-note">
+      {n.followup
+        ? <span className="hist-icon hist-icon-fu"><Check size={14} strokeWidth={3} /></span>
+        : <span className="hist-icon hist-icon-author" style={{ background: authorColor(n.author) }}>{authorInitials(n.author)}</span>}
+      <span className="hist-text">
+        <strong>{who}</strong>{n.followup ? ' followed up' : ''}: {n.body}
+      </span>
+      <span className="note-time">{formatNoteDate(n.createdAt)}</span>
+    </div>
+  )
+}
 
 // ── One follow-up workflow event in the feed (card received, claimed, texted…) ──
 const HISTORY_ICONS = {

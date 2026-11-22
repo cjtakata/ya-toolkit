@@ -680,6 +680,7 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
   border-radius: 10px; padding: 14px; margin: 12px 0;
 }
 .fu-head { display: flex; align-items: flex-start; gap: 8px; }
+.fu-card > .fu-head + * { margin-top: 14px; }
 .fu-icon { width: 22px; height: 22px; flex-shrink: 0; color: #b45309; }
 .fu-title { font-size: var(--fs-headline); font-weight: var(--fw-semibold); color: #b45309; }
 .fu-sub { font-size: var(--fs-subhead); color: #b45309; opacity: .8; margin-top: 1px; line-height: 1.4; }
@@ -993,3 +994,37 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
 .hist-claimed  .hist-icon { background: var(--primary-light); color: var(--primary); }
 .hist-done     .hist-icon { background: #d1fae5; color: #047857; }
 .hist-received .hist-text, .hist-claimed .hist-text, .hist-done .hist-text { color: var(--text); }
+
+/* Notes share the activity-row layout */
+.hist-item { align-items: flex-start; }
+.hist-item .hist-icon { margin-top: -3px; }
+.hist-item .note-time { white-space: nowrap; flex-shrink: 0; }
+.hist-note .hist-text { color: var(--text); line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
+.hist-note .hist-text strong { font-weight: var(--fw-semibold); }
+.hist-icon-author { color: #fff; font-size: var(--fs-caption); font-weight: var(--fw-bold); }
+.hist-icon-fu { background: #16a34a; color: #fff; }
+.feed-more {
+  margin-top: 6px; padding: 10px; border-radius: 10px; border: none; cursor: pointer;
+  background: var(--bg); color: var(--primary); font-family: inherit;
+  font-size: var(--fs-subhead); font-weight: var(--fw-semibold);
+}
+.feed-more:hover { background: var(--primary-light); }
+
+/* App-native pickers: grouped rows, the phone's own picker opens on tap */
+.picker-group { background: var(--bg); border-radius: 12px; overflow: hidden; margin-top: 8px; }
+.picker-row {
+  position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  min-height: 48px; padding: 0 14px; cursor: pointer;
+}
+.picker-row + .picker-row { border-top: 1px solid var(--border); }
+.picker-label { font-size: var(--fs-body); color: var(--text); }
+.picker-value {
+  display: inline-flex; align-items: center; gap: 4px; min-width: 0;
+  font-size: var(--fs-body); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.picker-value.empty { color: var(--border); color: #9ca3af; }
+.picker-native {
+  position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;
+  font-size: 16px; -webkit-appearance: none; appearance: none;
+}
+.picker-row:focus-within { background: var(--primary-light); }
