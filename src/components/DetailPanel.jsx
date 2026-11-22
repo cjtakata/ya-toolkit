@@ -412,6 +412,7 @@ function AdminCardTools({ card, person, leaders, currentUser, busy, onAction }) 
   const choices = [...leaders]
     .filter(l => l.name !== card.claimedBy)
     .sort((a, b) => a.name.localeCompare(b.name))
+  const choiceLabel = l => (l ? (l.name === currentUser ? `${l.name} (you)` : l.name) : '')
 
   if (confirmRemove) return (
     <div className="fu-card fu-admin fu-admin-confirm">
@@ -432,13 +433,13 @@ function AdminCardTools({ card, person, leaders, currentUser, busy, onAction }) 
       <div className="fu-admin-label"><ShieldCheck size={14} /> Admin</div>
       {open && (
         <div className="fu-admin-row">
-          <select className="fu-admin-select" value={leaderId} onChange={e => setLeaderId(e.target.value)}
-            aria-label={`Assign ${first} to a leader`} disabled={busy}>
-            <option value="">{card.state === 'claimed' ? 'Reassign to…' : 'Assign to…'}</option>
-            {choices.map(l => (
-              <option key={l.id} value={l.id}>{l.name === currentUser ? `${l.name} (you)` : l.name}</option>
-            ))}
-          </select>
+          {/* Same picker as YA Status / Crew, not the browser's own dropdown */}
+          <div className="picker-group fu-admin-picker">
+            <PickerRow label={card.state === 'claimed' ? 'Reassign to' : 'Assign to'}
+              value={choiceLabel(choices.find(l => String(l.id) === String(leaderId)))}
+              options={choices.map(choiceLabel)} emptyLabel="Choose" allowEmpty={false}
+              onChange={label => setLeaderId(choices.find(l => choiceLabel(l) === label)?.id ?? '')} />
+          </div>
           <button className="fu-btn-takeover" disabled={busy || !leaderId}
             onClick={() => onAction('assign', { leaderId }).then(() => setLeaderId(''))}>
             {busy ? '…' : 'Assign'}

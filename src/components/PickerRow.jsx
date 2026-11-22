@@ -32,7 +32,7 @@ export default function PickerRow({ label, value, options, onChange, emptyLabel 
         aria-haspopup="listbox" aria-expanded={open}>
         <span className="picker-label">{label}</span>
         <span className={`picker-value${shown ? '' : ' empty'}`}>
-          {shown || emptyLabel}<ChevronsUpDown size={15} />
+          <span className="picker-value-text">{shown || emptyLabel}</span><ChevronsUpDown size={15} />
         </span>
       </button>
       {open && (

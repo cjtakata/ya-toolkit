@@ -137,11 +137,19 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
   }
 
   // Drag-down-to-refresh: re-pull cards and people without the loading screen
-  const refreshAll = useCallback(() => Promise.all([
-    loadCards(true),
-    fetch('/api/people').then(r => r.ok ? r.json() : Promise.reject())
-      .then(data => { if (Array.isArray(data)) setPeople(data) }).catch(() => {}),
-  ]), [loadCards])
+  // report(0–1) drives the pull-to-refresh progress bar as each request finishes.
+  const refreshAll = useCallback(async (report = () => {}) => {
+    let done = 0
+    const step = () => report(0.1 + (++done / 2) * 0.9)
+    report(0.1)
+    const results = await Promise.allSettled([
+      loadCards(true).finally(step),
+      fetch('/api/people').then(r => r.ok ? r.json() : Promise.reject(new Error('people')))
+        .then(data => { if (Array.isArray(data)) setPeople(data) })
+        .finally(step),
+    ])
+    if (results.some(r => r.status === 'rejected')) throw new Error("Couldn't refresh")
+  }, [loadCards])
 
   const [loadProgress, setLoadProgress] = useState(30)
   const [loadLabel, setLoadLabel]       = useState('Loading people…')
