@@ -34,7 +34,10 @@ const TextShot = () => (
         <div style={{ flex: 1 }}><div className="fu-title">Claimed by you</div><div className="fu-sub">Just now</div></div>
         <span className="fu-btn-release">Release</span>
       </div>
-      <div className="fu-log fu-log-mine fu-text-btn help-fake-btn"><MessageCircle size={16} /> Text {G}</div>
+      <div className="fu-btn-row">
+        <div className="fu-log fu-log-mine fu-text-btn help-fake-btn"><MessageCircle size={16} /> Text {G}</div>
+        <span className="fu-btn-takeover fu-btn-marktexted"><Check size={15} strokeWidth={3} /> Mark as texted</span>
+      </div>
     </div>
   </Shot>
 )
@@ -112,7 +115,7 @@ export default function HelpGuide() {
         <ol className="help-card help-steps">
           <li>A guest fills out a connection card. They show up under <b>Not claimed</b>, and their crew's leaders get a text with a link.</li>
           <li>Open the guest and tap <b>Claim</b>. The card turns purple: <b>Claimed by you</b>. Can't follow up after all? Tap <b>Release</b>.<ClaimShot /></li>
-          <li>Tap <b>Text</b>. Messages opens with your saved message filled in. Tweak it and send.<TextShot /></li>
+          <li>Tap <b>Text</b>. Messages opens with your saved message filled in. Tweak it and send. Already texted them from your own phone? Tap <b>Mark as texted</b> instead.<TextShot /></li>
           <li>Back here, answer <b>Did you send the text?</b> with <b>Yes, I sent it</b>. The card turns green.<ConfirmShot /></li>
           <li>Add a note under <b>Notes &amp; History</b> so other leaders know how it went.</li>
         </ol>
