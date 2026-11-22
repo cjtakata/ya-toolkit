@@ -1206,3 +1206,23 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
 .help-row-text { color: var(--muted); margin-top: 1px; }
 .help-row-todo { color: var(--primary); font-weight: var(--fw-semibold); font-size: var(--fs-footnote); margin-top: 3px; }
 .help-after { margin: 8px 4px 0; font-size: var(--fs-footnote); }
+
+/* Guide pictures: live replicas of real screens in a soft frame */
+.help-shot { margin: 10px 0 2px; }
+.help-shot-screen {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 10px;
+  display: flex; flex-direction: column; gap: 8px; pointer-events: none; user-select: none;
+}
+.help-shot-screen .fu-card { margin: 0; }
+.help-shot figcaption { margin-top: 6px; font-size: var(--fs-caption); color: var(--muted); text-align: center; }
+.help-section-shot { margin: 0 0 10px; }
+.help-fake-btn { display: flex; align-items: center; justify-content: center; gap: 6px; text-align: center; }
+.help-fake-pill { display: inline-flex; align-items: center; }
+.help-stat-grid .stat { cursor: default; padding: 10px 12px; }
+.help-stat-grid .stat-num { font-size: 22px; }
+.help-sms { background: var(--surface); border-radius: 12px; padding: 10px 12px; }
+.help-sms-from { font-size: var(--fs-caption); font-weight: var(--fw-semibold); color: var(--muted); text-align: center; margin-bottom: 8px; }
+.help-sms-bubble {
+  background: #e9e9eb; color: #111; font-size: var(--fs-subhead); line-height: 1.4;
+  padding: 8px 12px; border-radius: 16px 16px 16px 4px; margin-right: 28px;
+}
