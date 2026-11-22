@@ -98,6 +98,44 @@
     .card-arrow { font-size: 20px; color: var(--border); flex-shrink: 0; transition: color .15s; }
     .card:hover .card-arrow, .card:active .card-arrow { color: var(--primary); }
 
+    /* ── Follow-up summary card ───────────────────────────────── */
+    .fu-card {
+      display: block; background: var(--surface); border-radius: 14px;
+      border: 1.5px solid var(--border); padding: 18px;
+      text-decoration: none; color: var(--text);
+      transition: border-color .15s, box-shadow .15s, transform .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .fu-card:hover, .fu-card:active { border-color: var(--primary); box-shadow: var(--shadow); transform: translateY(-1px); }
+    .fu-card:hover .card-arrow, .fu-card:active .card-arrow { color: var(--primary); }
+    .fu-main { display: flex; align-items: center; gap: 16px; }
+    .fu-count {
+      min-width: 56px; height: 56px; padding: 0 10px; border-radius: 14px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums;
+      background: #fef3c7; color: #b45309;               /* amber = waiting */
+    }
+    .fu-card.is-clear .fu-count   { background: #d1fae5; color: #047857; }
+    .fu-card.is-loading .fu-count,
+    .fu-card.is-signed-out .fu-count { background: var(--primary-light); color: var(--primary); font-size: 22px; }
+    .fu-text { flex: 1; min-width: 0; }
+    .fu-title { font-size: 16px; font-weight: 700; }
+    .fu-sub   { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .fu-crews {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border);
+    }
+    .fu-crews[hidden] { display: none; }
+    .fu-crew {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 99px;
+      background: var(--bg); color: var(--text);
+    }
+    .fu-crew b { font-variant-numeric: tabular-nums; }
+    .fu-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .fu-crew.is-zero { color: var(--muted); }
+    .fu-crew.is-zero .fu-dot { opacity: .35; }
+
     /* ── Add-to-home-screen prompt ────────────────────────────── */
     .home-prompt {
       position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
@@ -149,6 +187,22 @@
       <div class="hero-title">YA Toolkit</div>
       <div class="hero-subtitle">Your leader toolkit</div>
     </div>
+  </div>
+
+  <!-- Follow-ups waiting to be claimed (filled in by /api/followups) -->
+  <div class="section">
+    <div class="section-label">Follow-ups</div>
+    <a class="fu-card is-loading" id="fuCard" href="/people?followup=unclaimed">
+      <div class="fu-main">
+        <div class="fu-count" id="fuCount">–</div>
+        <div class="fu-text">
+          <div class="fu-title" id="fuTitle">Waiting to be claimed</div>
+          <div class="fu-sub" id="fuSub">Loading…</div>
+        </div>
+        <div class="card-arrow">›</div>
+      </div>
+      <div class="fu-crews" id="fuCrews" hidden></div>
+    </a>
   </div>
 
   <!-- Tools -->
@@ -210,13 +264,80 @@
       <svg class="share-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <path d="M12 3v13M8 7l4-4 4 4"/><path d="M20 16v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3"/>
       </svg>
-      then <strong>"Add to Home Screen"</strong> for one-tap access — no Discord browser.
+      then <strong>"Add to Home Screen"</strong> for one-tap access.
     </div>
   </div>
   <button class="prompt-dismiss" id="promptDismiss" aria-label="Dismiss"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
 </div>
 
 <script>
+  // Follow-ups waiting to be claimed. Needs a signed-in leader (session cookie);
+  // signed-out visitors get a sign-in prompt instead of a number.
+  (function () {
+    const CREWS = [
+      { key: 'college',     label: 'College Life',       color: '#0ea5e9' },
+      { key: 'earlycareer', label: 'Early Career',       color: '#8b5cf6' },
+      { key: 'youngpro',    label: 'Young Professional', color: '#f59e0b' },
+      { key: 'unassigned',  label: 'No crew',            color: '#9ca3af' },
+    ]
+    const card  = document.getElementById('fuCard')
+    const count = document.getElementById('fuCount')
+    const title = document.getElementById('fuTitle')
+    const sub   = document.getElementById('fuSub')
+    const crews = document.getElementById('fuCrews')
+
+    function setState(state) {
+      card.classList.remove('is-loading', 'is-clear', 'is-signed-out')
+      if (state) card.classList.add(state)
+    }
+
+    fetch('/api/followups', { credentials: 'same-origin' })
+      .then(r => {
+        if (r.status === 401) throw Object.assign(new Error(), { signedOut: true })
+        if (!r.ok) throw new Error()
+        return r.json()
+      })
+      .then(d => {
+        count.textContent = d.total
+        if (d.total === 0) {
+          setState('is-clear')
+          title.textContent = 'All follow-ups claimed'
+          sub.textContent   = d.claimed ? `${d.claimed} claimed and in progress` : 'Nobody is waiting right now'
+          return
+        }
+        setState(null)
+        title.textContent = d.total === 1 ? 'Person waiting to be claimed' : 'People waiting to be claimed'
+        const parts = []
+        if (d.oldestDays > 0) parts.push(`Oldest waiting ${d.oldestDays} day${d.oldestDays === 1 ? '' : 's'}`)
+        if (d.claimed) parts.push(`${d.claimed} already claimed`)
+        sub.textContent = parts.join(' · ') || 'Tap to see who'
+
+        crews.innerHTML = ''
+        for (const c of CREWS) {
+          const n = d.byCrew?.[c.key] || 0
+          if (c.key === 'unassigned' && n === 0) continue
+          const chip = document.createElement('span')
+          chip.className = 'fu-crew' + (n === 0 ? ' is-zero' : '')
+          chip.innerHTML = `<span class="fu-dot" style="background:${c.color}"></span>${c.label} <b>${n}</b>`
+          crews.appendChild(chip)
+        }
+        crews.hidden = false
+      })
+      .catch(err => {
+        if (err.signedOut) {
+          setState('is-signed-out')
+          card.href = '/people'
+          count.textContent = '→'
+          title.textContent = 'Sign in to see follow-ups'
+          sub.textContent   = 'Leaders sign in with their Planning Center email'
+        } else {
+          setState('is-signed-out')
+          count.textContent = '!'
+          sub.textContent   = "Couldn't load the count. Tap to open People."
+        }
+      })
+  })()
+
   // Show the add-to-home-screen prompt on mobile Safari (iOS) or Android Chrome,
   // unless already running as a standalone app or previously dismissed.
   (function () {
@@ -235,7 +356,7 @@
 
     if (isAndroid) {
       // Android: update copy (Chrome uses ⋮ menu → "Add to Home Screen")
-      sub.innerHTML = 'Tap the <strong>⋮ menu</strong> then <strong>"Add to Home Screen"</strong> for one-tap access — no Discord browser.'
+      sub.innerHTML = 'Tap the <strong>⋮ menu</strong> then <strong>"Add to Home Screen"</strong> for one-tap access.'
     }
 
     // Show after a short delay so it doesn't pop on first paint

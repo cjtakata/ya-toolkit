@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { Search, TriangleAlert } from 'lucide-react'
 import PersonRow from './PersonRow.jsx'
 import { CREW_OPTIONS, CREW_LABEL } from './listMeta.js'
@@ -11,15 +11,31 @@ export default function PeopleList({
 }) {
   const hasCrew = myCrew && myCrew !== 'all'
 
-  const [list, setList]         = useState(() => myCrew || 'all')
+  // Deep links from the Hub, e.g. /people?followup=unclaimed&crew=college
+  const [linked] = useState(() => {
+    const q = new URLSearchParams(window.location.search)
+    const fu   = q.get('followup')
+    const crew = q.get('crew')
+    return {
+      followup: ['needs', 'unclaimed', 'none'].includes(fu) ? fu : null,
+      crew:     crew && (crew === 'all' || CREW_LABEL[crew]) ? crew : null,
+    }
+  })
+
+  const [list, setList]         = useState(() => linked.crew || (linked.followup ? 'all' : myCrew || 'all'))
   const [gender, setGender]     = useState('all')
-  const [followup, setFollowup] = useState('all')
+  const [followup, setFollowup] = useState(() => linked.followup || 'all')
   const [status, setStatus]     = useState('all')
   const [search, setSearch]     = useState('')
   const [sort, setSort]         = useState('name')
 
   // When the leader changes their crew in the profile bar, focus the list on it.
-  useEffect(() => { setList(myCrew || 'all') }, [myCrew])
+  // (Skipped on first render so a Hub deep link's crew isn't overwritten.)
+  const firstRun = useRef(true)
+  useEffect(() => {
+    if (firstRun.current) { firstRun.current = false; return }
+    setList(myCrew || 'all')
+  }, [myCrew])
 
   const myCrewStats = useMemo(() => {
     if (!hasCrew) return null
@@ -46,6 +62,7 @@ export default function PeopleList({
       if (list !== 'all' && p.list !== list) return false
       if (gender !== 'all' && (p.gender || '').toLowerCase() !== gender) return false
       if (followup === 'needs' && !p.needsFollowup) return false
+      if (followup === 'unclaimed' && (!p.needsFollowup || (p.assignedLeader || '').trim())) return false
       if (followup === 'none'  &&  p.needsFollowup) return false
       if (status !== 'all' && p.status !== status) return false
       if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false
@@ -103,6 +120,7 @@ export default function PeopleList({
           <select className="filter-select" value={followup} onChange={e => setFollowup(e.target.value)}>
             <option value="all">Any follow-up</option>
             <option value="needs">Needs follow-up</option>
+            <option value="unclaimed">Unclaimed follow-up</option>
             <option value="none">No follow-up</option>
           </select>
           {statusOptions.length > 0 && (

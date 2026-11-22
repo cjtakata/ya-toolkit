@@ -2,7 +2,7 @@
   "name": "YA Toolkit",
   "short_name": "YA Toolkit",
   "description": "Ministry leader toolkit — people and community",
-  "start_url": "/people",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
