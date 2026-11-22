@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
-import { Check, LogOut, MessageCircle, Camera, Pencil, ChevronDown } from 'lucide-react'
+import { Check, LogOut, MessageCircle, Camera, Pencil, ChevronDown, ChevronRight, BookOpen } from 'lucide-react'
 import PickerRow from './PickerRow.jsx'
 import { CREW_OPTIONS, CREW_LABEL } from './listMeta.js'
 import { DEFAULT_MESSAGE, PLACEHOLDERS, renderMessage } from './cardMeta.js'
 
 // Profile: who's signed in, which crew the app focuses on, and sign out.
-export default function ProfileTab({ user, myCrew = 'all', onChooseCrew, onLogout, onSaveMessage, onSaveProfile }) {
+export default function ProfileTab({ onOpenHelp, user, myCrew = 'all', onChooseCrew, onLogout, onSaveMessage, onSaveProfile }) {
   const name     = user.global_name || user.username || 'Leader'
   const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
   const email    = user.username && user.username.includes('@') ? user.username : null
@@ -61,6 +61,17 @@ export default function ProfileTab({ user, myCrew = 'all', onChooseCrew, onLogou
         </section>
 
         <MessageEditor user={user} myCrew={myCrew} onSave={onSaveMessage} />
+
+        {onOpenHelp && (
+          <section className="home-section">
+            <div className="settings-group">
+              <button className="settings-row" onClick={onOpenHelp}>
+                <span className="help-entry"><BookOpen size={17} />How the YA Toolkit works</span>
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </section>
+        )}
 
         <section className="home-section">
           <div className="settings-group">

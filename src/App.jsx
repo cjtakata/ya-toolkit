@@ -7,6 +7,7 @@ import Sheet from './components/Sheet.jsx'
 
 import HomeTab, { inCrew } from './components/HomeTab.jsx'
 import ProfileTab from './components/ProfileTab.jsx'
+import HelpGuide from './components/HelpGuide.jsx'
 
 function LoadingScreen({ label, progress }) {
   return (
@@ -71,6 +72,7 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
     return t && t !== 'profile' ? t : (readUrlPreset() ? 'search' : 'home')
   })
   const [profileOpen, setProfileOpen] = useState(() => parseHashTab() === 'profile')
+  const [helpOpen, setHelpOpen]       = useState(false)
   const currentUser = user.global_name || user.username || 'Leader'
 
   // The page itself never scrolls while signed in (see html.app-shell in index.css)
@@ -386,8 +388,11 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
         </Sheet>
       )}
       <Sheet open={profileOpen} title="Profile" showTitle={false} onClose={() => setProfileOpen(false)}>
-        <ProfileTab user={user} myCrew={myCrew} onChooseCrew={chooseCrew} onLogout={handleLogout}
+        <ProfileTab onOpenHelp={() => { setProfileOpen(false); setHelpOpen(true) }} user={user} myCrew={myCrew} onChooseCrew={chooseCrew} onLogout={handleLogout}
           onSaveMessage={saveTextMessage} onSaveProfile={saveProfile} />
+      </Sheet>
+      <Sheet open={helpOpen} title="How it works" tall onClose={() => setHelpOpen(false)}>
+        <HelpGuide />
       </Sheet>
     </div>
   )

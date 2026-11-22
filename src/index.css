@@ -1185,3 +1185,24 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
 .ptr-bar { width: 100%; height: 4px; border-radius: 2px; background: var(--primary-light); overflow: hidden; }
 .ptr-bar-fill { height: 100%; border-radius: 2px; background: var(--primary); transition: width .35s ease-out; }
 .ptr-error .ptr-bar-fill { background: var(--danger); }
+
+/* ── Help guide (Profile → How the YA Toolkit works) ── */
+.help-entry { display: inline-flex; align-items: center; gap: 10px; }
+.help-entry svg { color: var(--primary); }
+.help-guide .home-section:first-of-type { margin-top: 18px; }
+.help-lead { font-size: var(--fs-body); line-height: 1.5; color: var(--text); margin: 4px 2px 0; }
+.help-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  margin: 0; font-size: var(--fs-subhead); line-height: 1.5; color: var(--text);
+}
+.help-card b { font-weight: var(--fw-semibold); }
+.help-steps, .help-list { padding: 12px 14px 12px 34px; display: flex; flex-direction: column; gap: 8px; }
+.help-steps li::marker { color: var(--primary); font-weight: var(--fw-bold); }
+.help-list li::marker { color: var(--primary); }
+.help-rows { overflow: hidden; }
+.help-row { padding: 11px 14px; }
+.help-row + .help-row { border-top: 1px solid var(--border); }
+.help-row-name { font-weight: var(--fw-semibold); }
+.help-row-text { color: var(--muted); margin-top: 1px; }
+.help-row-todo { color: var(--primary); font-weight: var(--fw-semibold); font-size: var(--fs-footnote); margin-top: 3px; }
+.help-after { margin: 8px 4px 0; font-size: var(--fs-footnote); }
