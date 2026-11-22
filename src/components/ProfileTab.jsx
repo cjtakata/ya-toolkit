@@ -1,9 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
-import { Check, LogOut, ExternalLink, MessageCircle } from 'lucide-react'
+import { Check, LogOut, MessageCircle } from 'lucide-react'
 import { CREW_OPTIONS, CREW_LABEL } from './listMeta.js'
 import { DEFAULT_MESSAGE, PLACEHOLDERS, renderMessage } from './cardMeta.js'
-
-const DISCORD_URL = 'https://discord.com/channels/1503595068722778154'
 
 // Profile: who's signed in, which crew the app focuses on, and sign out.
 export default function ProfileTab({ user, myCrew = 'all', onChooseCrew, onLogout, onSaveMessage }) {
@@ -45,10 +43,6 @@ export default function ProfileTab({ user, myCrew = 'all', onChooseCrew, onLogou
 
         <section className="home-section">
           <div className="settings-group">
-            <a className="settings-row" href={DISCORD_URL} target="_blank" rel="noreferrer">
-              <span>YA Leaders Discord</span>
-              <ExternalLink size={15} />
-            </a>
             <button className="settings-row settings-danger" onClick={onLogout}>
               <span>Sign out</span>
               <LogOut size={15} />
