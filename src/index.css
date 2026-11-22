@@ -553,6 +553,10 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
   flex: 1; overflow-y: auto; padding: 20px;
   display: flex; flex-direction: column; gap: 20px;
 }
+/* Sections are spaced by the 20px gap alone: cards don't add their own margins,
+   and a section title sits 10px above its table, same as above the info tiles. */
+.detail-body > .fu-card { margin: 0; }
+.detail-body .picker-group { margin-top: 0; }
 
 .field-section-title {
   font-size: var(--fs-caption); font-weight: var(--fw-bold); color: var(--muted);
