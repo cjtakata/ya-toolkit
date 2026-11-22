@@ -26,6 +26,10 @@
   --fs-caption:     12px;   /* badges, chips, uppercase section labels — the minimum */
   --fw-regular: 400; --fw-semibold: 600; --fw-bold: 700;
 
+  /* Room at the bottom of every scrolling area so the last item can scroll clear
+     of Safari's floating toolbar (iOS 26) and the home indicator. */
+  --scroll-end: max(96px, calc(32px + env(safe-area-inset-bottom)));
+
   --radius: 10px;
   --shadow: 0 1px 4px rgba(0,0,0,.07), 0 4px 16px rgba(0,0,0,.05);
   --shadow-lg: 0 8px 32px rgba(0,0,0,.12);
@@ -267,14 +271,14 @@ svg.lucide { vertical-align: middle; }
   background: none; border: none; cursor: pointer; font-family: inherit;
   font-size: var(--fs-body); font-weight: var(--fw-bold); color: var(--primary); padding: 6px;
 }
-.sheet-body { overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 4px 16px calc(24px + env(safe-area-inset-bottom)); }
+.sheet-body { overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 4px 16px var(--scroll-end); }
 .profile-sheet .home-section:first-of-type { margin-top: 20px; }
 
 /* ── Home & Profile tabs ──────────────────────────────────── */
 .home-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .home-inner {
   max-width: 640px; margin: 0 auto;
-  padding: 20px 16px 32px;
+  padding: 20px 16px var(--scroll-end);
 }
 
 .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -421,7 +425,7 @@ svg.lucide { vertical-align: middle; }
 
 .people-list {
   overflow-y: auto; flex: 1;
-  padding: 8px 8px 24px;
+  padding: 8px 8px var(--scroll-end);
   display: flex; flex-direction: column; gap: 2px;
 }
 
