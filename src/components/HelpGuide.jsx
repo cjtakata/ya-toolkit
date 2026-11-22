@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import { Link2, Share } from 'lucide-react'
 import { Flag, UserCheck, MessageCircle, Check, UserRoundSearch, Hand, Clock, MessageCircleHeart } from 'lucide-react'
 
 // "How the YA Toolkit works" — the leader guide, opened from Profile.
@@ -76,9 +78,30 @@ const HOME_ROWS = [
   ['Texted · 30 days', 'Guests a leader contacted in the last 30 days', 'Nothing. This is the win column'],
 ]
 
+// Short link that opens this guide (after sign-in): /help → /people#/help
+const GUIDE_URL = `${window.location.origin}/help`
+
+function ShareGuide() {
+  const [copied, setCopied] = useState(false)
+  const canShare = typeof navigator !== 'undefined' && !!navigator.share
+  async function share() {
+    if (canShare) {
+      try { await navigator.share({ title: 'How the YA Toolkit works', url: GUIDE_URL }); return } catch { return }
+    }
+    await navigator.clipboard?.writeText(GUIDE_URL)
+    setCopied(true); setTimeout(() => setCopied(false), 2000)
+  }
+  return (
+    <button type="button" className={`copy-link-btn help-share${copied ? ' copied' : ''}`} onClick={share}>
+      {copied ? <><Check size={13} />Link copied</> : canShare ? <><Share size={13} />Share this guide</> : <><Link2 size={13} />Copy link to this guide</>}
+    </button>
+  )
+}
+
 export default function HelpGuide() {
   return (
     <div className="help-guide">
+      <ShareGuide />
       <p className="help-lead">
         When a young adult fills out a connection card, a leader from their crew claims them here,
         texts them, and marks it done, ideally within a day.

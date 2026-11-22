@@ -40,14 +40,15 @@ export default function App() {
   return <AuthenticatedApp user={user} onUserChange={u => setUser(prev => ({ ...prev, ...u }))} onLogout={() => setUser(null)} />
 }
 
-// URL hash routes: #/home · #/search · #/profile (Profile sheet over Home) · #/person/<id> (over the current tab)
+// URL hash routes: #/home · #/search · #/profile (Profile sheet over Home) · #/help (the guide)
+// · #/person/<id> (over the current tab). /help redirects to #/help (vercel.json).
 const TABS = ['home', 'search']
 function parseHashId() {
   const m = window.location.hash.match(/^#\/person\/(.+)$/)
   return m ? m[1] : null
 }
 function parseHashTab() {
-  const m = window.location.hash.match(/^#\/(home|search|profile)$/)
+  const m = window.location.hash.match(/^#\/(home|search|profile|help)$/)
   return m ? m[1] : null
 }
 
@@ -69,10 +70,10 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
   const [preset, setPreset]           = useState(readUrlPreset)
   const [tab, setTab]                 = useState(() => {
     const t = parseHashTab()
-    return t && t !== 'profile' ? t : (readUrlPreset() ? 'search' : 'home')
+    return TABS.includes(t) ? t : (readUrlPreset() ? 'search' : 'home')   // #/profile and #/help open over Home
   })
   const [profileOpen, setProfileOpen] = useState(() => parseHashTab() === 'profile')
-  const [helpOpen, setHelpOpen]       = useState(false)
+  const [helpOpen, setHelpOpen]       = useState(() => parseHashTab() === 'help')
   const currentUser = user.global_name || user.username || 'Leader'
 
   // The page itself never scrolls while signed in (see html.app-shell in index.css)
@@ -186,12 +187,12 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
   // it); switching tabs just replaces the hash. Query-string filters are dropped
   // once applied so a reload doesn't re-apply them.
   useEffect(() => {
-    const newHash = selectedId ? `#/person/${selectedId}` : profileOpen ? '#/profile' : `#/${tab}`
+    const newHash = selectedId ? `#/person/${selectedId}` : helpOpen ? '#/help' : profileOpen ? '#/profile' : `#/${tab}`
     if (window.location.hash === newHash && !window.location.search) return
     const url = window.location.pathname + newHash
     if (selectedId && parseHashId() !== selectedId) history.pushState(null, '', url)
     else history.replaceState(null, '', url)
-  }, [selectedId, tab, profileOpen])
+  }, [selectedId, tab, profileOpen, helpOpen])
 
   // Handle browser back/forward
   useEffect(() => {
@@ -199,7 +200,8 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
       setSelectedId(parseHashId())
       const t = parseHashTab()
       setProfileOpen(t === 'profile')
-      if (t && t !== 'profile') setTab(t)
+      setHelpOpen(t === 'help')
+      if (t && t !== 'profile' && t !== 'help') setTab(t)
     }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)

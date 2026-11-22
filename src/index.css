@@ -1226,3 +1226,4 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
   background: #e9e9eb; color: #111; font-size: var(--fs-subhead); line-height: 1.4;
   padding: 8px 12px; border-radius: 16px 16px 16px 4px; margin-right: 28px;
 }
+.help-share { margin: 2px 0 12px; }
