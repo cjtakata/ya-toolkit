@@ -136,6 +136,13 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
     handleCardAction(card, 'claim').catch(err => alert(err.message))
   }
 
+  // Drag-down-to-refresh: re-pull cards and people without the loading screen
+  const refreshAll = useCallback(() => Promise.all([
+    loadCards(true),
+    fetch('/api/people').then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => { if (Array.isArray(data)) setPeople(data) }).catch(() => {}),
+  ]), [loadCards])
+
   const [loadProgress, setLoadProgress] = useState(30)
   const [loadLabel, setLoadLabel]       = useState('Loading people…')
 
@@ -306,6 +313,7 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
             cardsLoading={cardsLoading}
             cardsError={cardsError}
             onRefresh={() => loadCards(true)}
+            onPullRefresh={refreshAll}
             onClaim={claimFromList}
             busyCard={busyCard}
             people={people}
@@ -330,6 +338,7 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
             selectedId={selectedId}
             onSelect={setSelectedId}
             currentUser={currentUser}
+            onPullRefresh={refreshAll}
           />
         </div>
         {!isPhone && <DetailPanel

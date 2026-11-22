@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Check, Link2, ChevronLeft, ExternalLink, Flag, UserCheck, User, MessageCircle, Inbox, Hand, Undo2, CircleCheck, CircleMinus, Workflow, ShieldCheck } from 'lucide-react'
 import { LIST_META } from './listMeta.js'
 import PickerRow from './PickerRow.jsx'
+import Avatar from './Avatar.jsx'
 import { timeAgo, duration, shortDate, renderMessage, smsHref } from './cardMeta.js'
 
 const CREW_FALLBACK   = ['College Life', 'Early Career', 'Young Professional']
@@ -141,7 +142,6 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
   }
 
   const lm       = LIST_META[person.list] || { crew: person.list, badgeCls: '' }
-  const initials = person.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 
   // Auto-save: each field persists to PCO the moment it changes.
   async function update(field, value) {
@@ -183,9 +183,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
         )}
         <div className="detail-header-top">
           <div className="detail-person">
-            <div className="detail-avatar" style={{ background: person.color }}>
-              {person.avatar ? <img src={person.avatar} alt={initials} /> : initials}
-            </div>
+            <Avatar person={person} className="detail-avatar" />
             <div>
               <div className="detail-name">{person.name}</div>
               {person.email

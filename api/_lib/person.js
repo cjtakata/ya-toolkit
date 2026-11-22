@@ -81,7 +81,8 @@ export function normalizePerson(raw, included, fieldDefs) {
     age,
     gender:         a.gender || null,
     since:          fmtSince(a.created_at),
-    avatar:         a.avatar || null,
+    // PCO's generated initials image isn't a real photo; the app shows a stock avatar instead
+    avatar:         a.avatar && !/\/uploads\/initials\//.test(a.avatar) ? a.avatar : null,
     color:          avatarColor(name),
     list,
     listName:       listNames[list],

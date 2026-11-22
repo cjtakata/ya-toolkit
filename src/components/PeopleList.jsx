@@ -1,3 +1,4 @@
+import usePullToRefresh from './usePullToRefresh.jsx'
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { Search, SlidersHorizontal, X, Check } from 'lucide-react'
 import PersonRow from './PersonRow.jsx'
@@ -34,8 +35,9 @@ const LIST_OPTIONS = CREW_OPTIONS
 
 export default function PeopleList({
   people, loading, error, statusOptions = [],
-  myCrew = 'all', preset = null, cardsByPerson = {}, selectedId, onSelect, currentUser,
+  myCrew = 'all', preset = null, cardsByPerson = {}, selectedId, onSelect, currentUser, onPullRefresh,
 }) {
+  const ptr = usePullToRefresh(onPullRefresh)
   const [list, setList]         = useState(() => myCrew || 'all')
   const [gender, setGender]     = useState('all')
   const [cardF, setCardF]       = useState('all')   // connection-card filter
@@ -155,7 +157,8 @@ export default function PeopleList({
         </div>
       </Sheet>
 
-      <div className="people-list">
+      <div className="people-list" ref={ptr.ref}>
+        {ptr.indicator}
         {loading && <div className="empty-state">Loading people from PCO…</div>}
         {error   && <div className="empty-state" style={{ color: 'var(--danger)' }}>{error}</div>}
         {!loading && !error && visible.length === 0 && (

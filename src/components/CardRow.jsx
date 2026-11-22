@@ -1,11 +1,11 @@
 import { LIST_META } from './listMeta.js'
 import { timeAgo, duration, hoursSince } from './cardMeta.js'
+import Avatar from './Avatar.jsx'
 
 // One connection-card guest: who, when the card came in, and where follow-up stands.
 export default function CardRow({ card, currentUser, selected, onOpen, onClaim, busy }) {
   const p  = card.person
   const lm = LIST_META[p.list]
-  const initials = p.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
   const mine = card.claimedBy && card.claimedBy === currentUser
 
   let line, warn = false
@@ -21,9 +21,7 @@ export default function CardRow({ card, currentUser, selected, onOpen, onClaim, 
 
   return (
     <div className={`person-row card-row${selected ? ' selected' : ''}`} onClick={onOpen}>
-      <div className="avatar" style={{ background: p.color }}>
-        {p.avatar ? <img src={p.avatar} alt={initials} /> : initials}
-      </div>
+      <Avatar person={p} />
       <div className="person-info">
         <div className="person-name-row">
           <span className="person-name">{p.name}</span>

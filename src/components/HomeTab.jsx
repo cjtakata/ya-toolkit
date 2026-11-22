@@ -1,3 +1,4 @@
+import usePullToRefresh from './usePullToRefresh.jsx'
 import { useMemo, useState } from 'react'
 import { UserRoundSearch, Hand, Clock, MessageCircleHeart, PartyPopper, RefreshCw } from 'lucide-react'
 import CardRow from './CardRow.jsx'
@@ -22,8 +23,9 @@ const byNewest = key => (a, b) => (b[key] || '').localeCompare(a[key] || '')
 //   Who filled out a card → who claimed them → have they been texted?
 export default function HomeTab({
   greetName, cards, cardsError, cardsLoading, onRefresh, people, myCrew = 'all', currentUser,
-  selectedId, onSelect, onSeeAll, onChangeCrew, onClaim, busyCard,
+  selectedId, onSelect, onSeeAll, onChangeCrew, onClaim, busyCard, onPullRefresh,
 }) {
+  const ptr = usePullToRefresh(onPullRefresh)
   const [showAllDone, setShowAllDone] = useState(false)
 
   // What Home shows for the chosen crew: that crew's guests, plus guests with no
@@ -53,7 +55,8 @@ export default function HomeTab({
   )
 
   return (
-    <div className="home-scroll">
+    <div className="home-scroll" ref={ptr.ref}>
+      {ptr.indicator}
       <div className="home-inner">
         <header className="section-head">
           <h1 className="section-title">{greeting()}, {greetName || first}</h1>
