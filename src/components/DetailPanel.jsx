@@ -172,18 +172,12 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
       <div className="detail-header">
         {isSheet ? (
           <div className="detail-nav detail-nav-sheet" data-sheet-handle>
-            <button className={`copy-link-btn${copied ? ' copied' : ''}`} onClick={handleCopyLink} title="Copy link to this profile">
-              {copied ? <><Check size={13} />Copied</> : <><Link2 size={13} />Copy Link</>}
-            </button>
             <button className="sheet-done-inline" onClick={onClose}>Done</button>
           </div>
         ) : (
           <div className="detail-nav">
             <button className="back-btn" onClick={onClose}>
               <ChevronLeft size={20} strokeWidth={2.4} />{backLabel}
-            </button>
-            <button className={`copy-link-btn${copied ? ' copied' : ''}`} onClick={handleCopyLink} title="Copy link to this profile">
-              {copied ? <><Check size={13} />Copied</> : <><Link2 size={13} />Copy Link</>}
             </button>
           </div>
         )}
@@ -211,6 +205,9 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
           >
             <ExternalLink size={13} />View in PCO
           </a>
+          <button className={`copy-link-btn${copied ? ' copied' : ''}`} onClick={handleCopyLink} title="Copy link to this profile">
+            {copied ? <><Check size={13} />Copied</> : <><Link2 size={13} />Copy Link</>}
+          </button>
           {person.list !== 'unassigned' && <span className={`badge ${lm.badgeCls}`}>{lm.crew}</span>}
         </div>
       </div>

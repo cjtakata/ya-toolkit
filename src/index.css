@@ -255,7 +255,7 @@ svg.lucide { vertical-align: middle; }
 .detail-sheet { display: flex; flex-direction: column; margin: 0 -16px; }
 .detail-sheet .detail-header { padding-top: 6px; }
 .detail-sheet .detail-body { overflow: visible; flex: none; }
-.detail-nav-sheet { margin: -4px 0 0; }
+.detail-nav-sheet { margin: -4px 0 0; justify-content: flex-end; }
 .sheet-done-inline {
   background: none; border: none; cursor: pointer; font-family: inherit;
   font-size: var(--fs-body); font-weight: var(--fw-bold); color: var(--primary); padding: 6px 0 6px 6px;
