@@ -4,12 +4,7 @@ import PeopleList from './components/PeopleList.jsx'
 import DetailPanel from './components/DetailPanel.jsx'
 import AppTopBar from './components/AppTopBar.jsx'
 import Sheet from './components/Sheet.jsx'
-import { CREW_LABEL } from './components/listMeta.js'
 
-function greeting() {
-  const h = new Date().getHours()
-  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
-}
 import HomeTab from './components/HomeTab.jsx'
 import ProfileTab from './components/ProfileTab.jsx'
 
@@ -17,7 +12,7 @@ function LoadingScreen({ label, progress }) {
   return (
     <div className="loading-screen">
       <div className="loading-logo">
-        <img src="/ya.svg" alt="YA People" />
+        <img src="/ya.svg" alt="YA Toolkit" />
       </div>
       <div className="loading-bar-track">
         <div className="loading-bar-fill" style={{ width: `${progress}%` }} />
@@ -251,11 +246,6 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
     <div className="app-screen">
       <AppTopBar
         tab={tab} onChange={changeTab} user={user} badge={waitingCount}
-        title={tab === 'home' ? `${greeting()}, ${currentUser.split(' ')[0]}` : 'People'}
-        subtitle={tab === 'search'
-          ? `${allPeople.length} people in Planning Center`
-          : `${myCrew && myCrew !== 'all' ? CREW_LABEL[myCrew] : 'All crews'} · ${myCrew && myCrew !== 'all' ? people.filter(p => p.list === myCrew).length : people.length} people`}
-        onSubtitleClick={tab === 'home' ? () => setProfileOpen(true) : null}
         onOpenProfile={() => setProfileOpen(true)}
       />
       <div className="app-body">
@@ -299,7 +289,7 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
           textTemplate={user.textMessage || ''}
           card={selectedPerson ? cardsByPerson[selectedPerson.id] || null : null}
           onCardAction={handleCardAction}
-          backLabel={tab === 'home' ? 'Home' : 'People'}
+          backLabel={tab === 'home' ? 'Home' : 'Directory'}
           onClose={() => setSelectedId(null)}
           onSave={handleSave}
         />

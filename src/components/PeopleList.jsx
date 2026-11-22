@@ -73,6 +73,10 @@ export default function PeopleList({
 
   return (
     <div className="people-pane">
+      <header className="section-head section-head-list">
+        <h1 className="section-title">Directory</h1>
+        <span className="section-sub">{people.length} people in Planning Center</span>
+      </header>
       {hasCrew && myCrewStats && (
         <div className="mycrew-banner">
           <div>

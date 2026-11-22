@@ -26,7 +26,7 @@ export default function ProfileTab({ user, myCrew = 'all', onChooseCrew, onLogou
           <div className="home-section-head">
             <h2>Your crew</h2>
           </div>
-          <p className="profile-hint">Home and People focus on this crew. Saved on this device.</p>
+          <p className="profile-hint">Home and Directory focus on this crew. Saved on this device.</p>
           <div className="settings-group" role="radiogroup" aria-label="Your crew">
             {CREW_OPTIONS.map(o => {
               const on = (myCrew || 'all') === o.key
