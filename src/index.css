@@ -533,7 +533,7 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
   display: inline-flex; align-items: center; gap: 5px;
   font-size: var(--fs-footnote); color: var(--primary); text-decoration: none;
   background: var(--primary-light); border-radius: 6px; padding: 4px 10px;
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-semibold); white-space: nowrap;
 }
 .pco-link:hover { background: #ddd6fe; }
 
@@ -610,7 +610,7 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
 .field-textarea:focus { border-color: var(--primary); }
 
 .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.info-item { background: var(--bg); border-radius: 8px; padding: 10px 12px; }
+.info-item { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
 .info-item-label {
   font-size: var(--fs-caption); color: var(--muted); font-weight: var(--fw-semibold);
   text-transform: uppercase; letter-spacing: .05em;
@@ -1017,7 +1017,7 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
 .feed-more:hover { background: var(--primary-light); }
 
 /* Settings-style picker rows that open the app's own menu card */
-.picker-group { background: var(--bg); border-radius: 12px; margin-top: 8px; }
+.picker-group { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-top: 8px; }
 .picker-row { position: relative; }
 .picker-row + .picker-row { border-top: 1px solid var(--border); }
 .picker-trigger {
@@ -1159,15 +1159,12 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
 .fu-btn-danger:disabled { opacity: .5; cursor: not-allowed; }
 .fu-link-danger { color: var(--danger); }
 
-/* ── Stock avatars (no PCO photo): guy / girl / neutral silhouette with a border ── */
-.avatar-stock { position: relative; background: var(--av-bg); box-shadow: inset 0 0 0 1.5px var(--av-ring); }
-.avatar-stock svg { width: 100%; height: 100%; display: block; border-radius: 50%; }
-.avatar-stock .avatar-fig  { fill: var(--av-fig); }
-.avatar-stock .avatar-hair { fill: var(--av-hair); }
-.avatar-stock .avatar-face { fill: var(--av-face); }
-.avatar-male    { --av-bg: #e6efff; --av-ring: #b9cdf3; --av-fig: #8eaee6; --av-hair: #4f73b8; --av-face: #c4d6f5; }
-.avatar-female  { --av-bg: #fdeaf1; --av-ring: #f2c3d5; --av-fig: #e9a3bf; --av-hair: #b9658c; --av-face: #f7d3e1; }
-.avatar-neutral { --av-bg: #f0f1f4; --av-ring: #d4d8df; --av-fig: #aab1bd; --av-hair: #8a92a0; --av-face: #aab1bd; }
+/* ── No PCO photo: initials in the app's style ── */
+.avatar-initials {
+  background: var(--primary-light); color: var(--primary);
+  box-shadow: inset 0 0 0 1.5px rgba(79, 70, 229, .18);
+  font-weight: var(--fw-semibold); letter-spacing: .02em;
+}
 
 /* ── Drag down to refresh ── */
 .ptr {

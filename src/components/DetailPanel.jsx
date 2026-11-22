@@ -194,7 +194,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
             </div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <a
             className="pco-link"
             href={`https://people.planningcenteronline.com/people/AC${person.id}`}
