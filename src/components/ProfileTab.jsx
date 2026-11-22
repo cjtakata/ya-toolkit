@@ -204,57 +204,53 @@ function squarePhoto(file, size = 512) {
   })
 }
 
-// ── Nickname: shown as a row (Nickname · Connor ✎); tap to edit in place.
-// Saved to "YA Nickname" on their PCO profile — never PCO's own nickname.
+// ── Nickname: a row (Nickname · Connor ✎) that expands into the editor —
+// same pattern as the text message. Saved to "YA Nickname" on their PCO
+// profile, never PCO's own nickname.
 function NicknameRow({ user, onSave }) {
-  const [editing, setEditing] = useState(false)
-  const [value, setValue]     = useState(user.nickname || '')
-  const [status, setStatus]   = useState('')
+  const [open, setOpen]     = useState(false)
+  const [value, setValue]   = useState(user.nickname || '')
+  const [status, setStatus] = useState('')
   const inputRef = useRef(null)
-  useEffect(() => { if (!editing) setValue(user.nickname || '') }, [user.nickname, editing])
-  useEffect(() => { if (editing) inputRef.current?.focus() }, [editing])
+  useEffect(() => { if (!open) setValue(user.nickname || '') }, [user.nickname, open])
+  useEffect(() => { if (open) inputRef.current?.focus() }, [open])
   const dirty = value.trim() !== (user.nickname || '')
 
   async function save(e) {
     e?.preventDefault()
-    if (!dirty) { setEditing(false); return }
+    if (!dirty) return
     setStatus('saving')
     try {
       await onSave({ nickname: value.trim() })
-      setStatus(''); setEditing(false)
+      setStatus(''); setOpen(false)
     } catch (err) { setStatus(err.message) }
   }
-  function cancel() { setValue(user.nickname || ''); setStatus(''); setEditing(false) }
-
-  if (!editing) {
-    return (
-      <div className="picker-row">
-        <button type="button" className="picker-trigger" onClick={() => setEditing(true)}>
-          <span className="picker-label">Nickname</span>
-          <span className={`picker-value${user.nickname ? '' : ' empty'}`}>
-            {user.nickname || 'Add'}<Pencil size={14} />
-          </span>
-        </button>
-      </div>
-    )
-  }
+  function close() { setValue(user.nickname || ''); setStatus(''); setOpen(false) }
 
   return (
-    <form className="picker-row attr-edit" onSubmit={save}>
-      <label className="attr-edit-field">
+    <div className={`attr-expand${open ? ' open' : ''}`}>
+      <button type="button" className="msg-toggle" aria-expanded={open} onClick={() => (open ? close() : setOpen(true))}>
         <span className="picker-label">Nickname</span>
-        <input ref={inputRef} className="attr-input" value={value} maxLength={40}
-          placeholder={(user.global_name || '').split(' ')[0] || 'Nickname'}
-          onChange={e => { setValue(e.target.value); setStatus('') }}
-          onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); cancel() } }} />
-      </label>
-      {status && status !== 'saving' && <div className="login-error attr-error">{status}</div>}
-      <div className="attr-actions">
-        <button type="button" className="msg-reset" onClick={cancel}>Cancel</button>
-        <button type="submit" className="login-btn attr-save" disabled={status === 'saving'}>
-          {status === 'saving' ? 'Saving…' : 'Save'}
-        </button>
-      </div>
-    </form>
+        {open
+          ? <span className="msg-toggle-action">Close<ChevronDown size={15} /></span>
+          : <span className={`picker-value${user.nickname ? '' : ' empty'}`}>{user.nickname || 'Add'}<Pencil size={14} /></span>}
+      </button>
+      {open && (
+        <form className="attr-panel" onSubmit={save}>
+          <div className="attr-prompt">What should we call you?</div>
+          <p className="profile-hint">Used in the greeting and your profile here. It's only for this app; it won't change your name anywhere else in Planning Center.</p>
+          <div className="nickname-row">
+            <input ref={inputRef} className="login-input" value={value} maxLength={40}
+              placeholder={(user.global_name || '').split(' ')[0] || 'Nickname'}
+              onChange={e => { setValue(e.target.value); setStatus('') }}
+              onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); close() } }} />
+            <button className="login-btn" type="submit" disabled={!dirty || status === 'saving'}>
+              {status === 'saving' ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+          {status && status !== 'saving' && <div className="login-error attr-error">{status}</div>}
+        </form>
+      )}
+    </div>
   )
 }

@@ -1122,3 +1122,13 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
 .msg-group.open .msg-toggle-action svg { transform: rotate(180deg); }
 .msg-group .msg-editor { border: none; border-top: 1px solid var(--border); border-radius: 0; background: none; animation: picker-in .18s ease-out; transform-origin: top; }
 .msg-group .msg-editor .profile-hint { margin: 0; }
+.attr-expand + .picker-row, .picker-row + .attr-expand { border-top: 1px solid var(--border); }
+.attr-expand .picker-value { display: inline-flex; align-items: center; gap: 4px; }
+.attr-expand.open .msg-toggle-action svg { transform: rotate(180deg); }
+.attr-expand .msg-toggle { border-radius: 14px 14px 0 0; }
+.attr-panel {
+  border-top: 1px solid var(--border); padding: 12px; display: flex; flex-direction: column; gap: 8px;
+  animation: picker-in .18s ease-out; transform-origin: top;
+}
+.attr-prompt { font-size: var(--fs-body); font-weight: var(--fw-semibold); color: var(--text); }
+.attr-panel .profile-hint { margin: 0 0 4px; }
