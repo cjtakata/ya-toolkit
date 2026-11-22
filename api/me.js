@@ -1,8 +1,8 @@
-import { requireAuth } from './_lib/auth.js'
+import { requireAuth, isAdmin } from './_lib/auth.js'
 import { pcoFetch } from './_lib/pco.js'
 
 // The signed-in leader, plus their personal text-message template.
-//   GET  /api/me                      → { id, username, global_name, nickname, avatar, crews, textMessage }
+//   GET  /api/me                      → { id, username, global_name, nickname, avatar, crews, textMessage, isAdmin }
 //   POST /api/me { textMessage }      → saves it ('' resets to the app default)
 //   POST /api/me { nickname }         → saves their "YA Nickname" ('' clears it) — a YA Details
 //                                        field, NOT PCO's own nickname, so it never shows elsewhere in PCO
@@ -147,5 +147,6 @@ export default async function handler(req, res) {
     // From the leader's PCO Crew field at sign-in (see auth/magic-request.js).
     crews:       user.crews || [],
     textMessage,
+    isAdmin:     isAdmin(user),      // can assign leaders to cards and remove guests (see _lib/auth.js)
   })
 }

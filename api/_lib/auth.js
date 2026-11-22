@@ -72,6 +72,24 @@ async function stillLeader(pcoId) {
   }
 }
 
+// ── Admins ──────────────────────────────────────────────────────
+// Admins can assign a leader to a guest's card and remove a guest from the
+// follow-up workflow. The list is PCO person ids, comma-separated, in the
+// YA_ADMIN_PCO_IDS env var. Until that's set, Connor (83780614) is the only admin.
+const DEFAULT_ADMINS = '83780614'
+export function adminIds() {
+  return new Set(String(process.env.YA_ADMIN_PCO_IDS || DEFAULT_ADMINS)
+    .split(',').map(s => s.trim()).filter(s => /^\d+$/.test(s)))
+}
+export function isAdmin(user) {
+  return !!user && adminIds().has(String(user.id))
+}
+
+// Is this PCO person a current YA Leader? (same check sign-in uses, cached)
+export async function isLeaderPerson(pcoId) {
+  return /^\d+$/.test(String(pcoId)) && stillLeader(String(pcoId))
+}
+
 export async function requireAuth(req, res) {
   const cookies = parseCookies(req)
   const token   = cookies[COOKIE]

@@ -1132,3 +1132,30 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
 }
 .attr-prompt { font-size: var(--fs-body); font-weight: var(--fw-semibold); color: var(--text); }
 .attr-panel .profile-hint { margin: 0 0 4px; }
+
+/* ── Follow-up card — admin tools (assign / remove) ──────── */
+.fu-admin { border-color: var(--border); background: var(--surface); }
+.fu-admin > * + * { margin-top: 10px; }
+.fu-admin-label {
+  display: flex; align-items: center; gap: 5px;
+  font-size: var(--fs-caption); font-weight: var(--fw-semibold); color: var(--muted);
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.fu-admin-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.fu-admin-select {
+  flex: 1; min-width: 0; border: 1.5px solid var(--border); border-radius: 8px;
+  padding: 9px 10px; font-size: var(--fs-body); font-family: inherit;
+  background: var(--surface); color: var(--text);
+}
+.fu-admin-select:focus { outline: none; border-color: var(--primary); }
+.fu-admin-confirm { border-color: #fca5a5; background: #fef2f2; }
+.fu-admin-confirm .fu-title { color: #991b1b; }
+.fu-admin-confirm .fu-sub   { color: #991b1b; opacity: .85; }
+.fu-btn-danger {
+  flex: 1; background: var(--danger); color: #fff; border: none; border-radius: 8px;
+  padding: 10px; font-size: var(--fs-body); font-weight: var(--fw-semibold);
+  cursor: pointer; font-family: inherit;
+}
+.fu-btn-danger:hover:not(:disabled) { background: #dc2626; }
+.fu-btn-danger:disabled { opacity: .5; cursor: not-allowed; }
+.fu-link-danger { color: var(--danger); }
