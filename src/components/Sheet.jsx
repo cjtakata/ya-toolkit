@@ -1,17 +1,23 @@
 import { useEffect, useRef, useState } from 'react'
 
-// iOS-style sheet: slides up over the app and dims what's behind it.
-// Closes on "Done", a tap on the backdrop, Escape, or dragging it down —
-// from the grabber/header, or from the content when it's scrolled to the top.
+// iOS-style sheet: slides up over the app (eased in and out) and dims what's
+// behind it. Closes on "Done", a tap on the backdrop, Escape, or a drag down
+// from the TOP of the sheet — the grabber and header row only, so scrolling,
+// typing and pinch-zooming inside the content never move the sheet.
 //
-//   title    – header title; pass null for a headless sheet (content brings its own header)
+//   title    – header title; pass null for a headless sheet (its content brings
+//              its own top row — mark it with data-sheet-handle to make it draggable)
 //   tall     – open at full sheet height (for content that loads in, like a profile)
+const CLOSE_DISTANCE = 0.35   // drag at least 35% of the sheet's height…
+const FLICK_SPEED    = 0.9    // …or flick at least this fast (px per ms)…
+const FLICK_MIN      = 70     // …and at least this far, so a small bump never closes it
+
 export default function Sheet({ open, title = null, tall = false, onClose, children }) {
   const [mounted, setMounted] = useState(open)
   const [shown, setShown]     = useState(false)
-  const sheetRef  = useRef(null)
-  const bodyRef   = useRef(null)
-  const backRef   = useRef(null)
+  const sheetRef   = useRef(null)
+  const bodyRef    = useRef(null)
+  const backRef    = useRef(null)
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
 
@@ -22,7 +28,7 @@ export default function Sheet({ open, title = null, tall = false, onClose, child
       return () => cancelAnimationFrame(id)
     }
     setShown(false)
-    const t = setTimeout(() => setMounted(false), 300)   // let the slide-down finish
+    const t = setTimeout(() => setMounted(false), 450)   // let the slide-down finish
     return () => clearTimeout(t)
   }, [open])
 
@@ -33,81 +39,94 @@ export default function Sheet({ open, title = null, tall = false, onClose, child
     return () => document.removeEventListener('keydown', onKey)
   }, [open])
 
-  // Back to the top of the content each time a sheet opens
-  useEffect(() => { if (open && bodyRef.current) bodyRef.current.scrollTop = 0 }, [open, children?.key])
+  useEffect(() => { if (open && bodyRef.current) bodyRef.current.scrollTop = 0 }, [open])
 
-  // ── Drag to dismiss (touch + mouse/pen via pointer events) ─────────
+  // ── Drag to dismiss, from the handle area only ────────────────────
   useEffect(() => {
     const sheet = sheetRef.current
     if (!mounted || !sheet) return
-    let startY = 0, lastY = 0, lastT = 0, velocity = 0, dragging = false, armed = false
+    let startY = 0, dy = 0, samples = [], active = false
 
-    const setY = (y, animate) => {
+    const isHandle = target =>
+      !!target.closest('.sheet-handle, .sheet-head, [data-sheet-handle]') &&
+      !target.closest('button, a, input, textarea, select')
+
+    const paint = (y, animate) => {
       sheet.style.transition = animate ? '' : 'none'
-      sheet.style.transform  = y ? `translateY(${y}px)` : ''
-      if (backRef.current) {
-        backRef.current.style.transition = animate ? '' : 'none'
-        backRef.current.style.opacity = y ? String(Math.max(0, 1 - y / (sheet.offsetHeight || 1))) : ''
+      sheet.style.transform  = y > 0 ? `translateY(${y}px)` : ''
+      const back = backRef.current
+      if (back) {
+        back.style.transition = animate ? '' : 'none'
+        back.style.opacity = y > 0 ? String(Math.max(0, 1 - y / (sheet.offsetHeight || 1))) : ''
       }
     }
 
     function start(y, target) {
-      // Only drag when the content can't scroll up any further (or from the header).
-      const inBody = bodyRef.current?.contains(target)
-      if (inBody && bodyRef.current.scrollTop > 0) return
-      if (target.closest('input, textarea, select, [contenteditable="true"]')) return
-      armed = true; dragging = false
-      startY = lastY = y; lastT = performance.now(); velocity = 0
+      if (!isHandle(target)) return
+      active = true; startY = y; dy = 0
+      samples = [{ y, t: performance.now() }]
     }
     function move(y, e) {
-      if (!armed) return
-      const dy = y - startY
-      if (!dragging) {
-        if (dy < -4) { armed = false; return }         // scrolling up: let the content scroll
-        if (dy < 6) return
-        dragging = true
-      }
+      if (!active) return
       e.cancelable && e.preventDefault()
+      const raw = y - startY
+      // Pulling up past the top meets resistance instead of lifting the sheet
+      dy = raw > 0 ? raw : raw / 6
+      paint(Math.max(0, dy), false)
       const now = performance.now()
-      velocity = (y - lastY) / Math.max(1, now - lastT)  // px per ms
-      lastY = y; lastT = now
-      setY(Math.max(0, dy), false)
+      samples.push({ y, t: now })
+      while (samples.length > 2 && now - samples[0].t > 100) samples.shift()   // last ~100ms
     }
     function end() {
-      if (!armed) return
-      armed = false
-      if (!dragging) return
-      dragging = false
-      const dy = lastY - startY
-      if (performance.now() - lastT > 120) velocity = 0   // held still before letting go: not a flick
-      if (dy > Math.min(140, sheet.offsetHeight * 0.3) || velocity > 0.6) {
-        setY(0, true)               // let the normal close animation run from here
-        sheet.style.transform = `translateY(${dy}px)`
-        requestAnimationFrame(() => { sheet.style.transform = ''; onCloseRef.current() })
+      if (!active) return
+      active = false
+      const now = performance.now()
+      const first = samples[0], last = samples[samples.length - 1]
+      // Speed over the final ~100ms; holding still before letting go isn't a flick
+      const speed = (now - last.t > 80) ? 0 : (last.y - first.y) / Math.max(1, last.t - first.t)
+      const farEnough = dy > (sheet.offsetHeight || 600) * CLOSE_DISTANCE
+      const flicked   = speed > FLICK_SPEED && dy > FLICK_MIN
+      if (farEnough || flicked) {
+        // Hand off to the normal close animation: it eases from wherever the
+        // finger left the sheet (transitions start from the current position).
+        sheet.style.transition = ''
+        sheet.style.transform = ''
+        if (backRef.current) { backRef.current.style.transition = ''; backRef.current.style.opacity = '' }
+        onCloseRef.current()
       } else {
-        setY(0, true)                // spring back
+        paint(0, true)   // ease back into place
       }
     }
+    function cancel() { if (active) { active = false; paint(0, true) } }
 
-    const ts = e => start(e.touches[0].clientY, e.target)
-    const tm = e => move(e.touches[0].clientY, e)
-    const pd = e => { if (e.pointerType !== 'touch') start(e.clientY, e.target) }
-    const pm = e => { if (e.pointerType !== 'touch') move(e.clientY, e) }
+    const ts = e => {
+      if (e.touches.length > 1) { cancel(); return }      // two fingers = pinch, not a drag
+      start(e.touches[0].clientY, e.target)
+    }
+    const tm = e => {
+      if (!active) return
+      if (e.touches.length > 1) { cancel(); return }
+      move(e.touches[0].clientY, e)
+    }
+    const pd = e => { if (e.pointerType === 'mouse') start(e.clientY, e.target) }
+    const pm = e => { if (e.pointerType === 'mouse') move(e.clientY, e) }
+    const pu = e => { if (e.pointerType === 'mouse') end() }
+
     sheet.addEventListener('touchstart', ts, { passive: true })
     sheet.addEventListener('touchmove', tm, { passive: false })
     sheet.addEventListener('touchend', end)
-    sheet.addEventListener('touchcancel', end)
+    sheet.addEventListener('touchcancel', cancel)
     sheet.addEventListener('pointerdown', pd)
     window.addEventListener('pointermove', pm)
-    window.addEventListener('pointerup', end)
+    window.addEventListener('pointerup', pu)
     return () => {
       sheet.removeEventListener('touchstart', ts)
       sheet.removeEventListener('touchmove', tm)
       sheet.removeEventListener('touchend', end)
-      sheet.removeEventListener('touchcancel', end)
+      sheet.removeEventListener('touchcancel', cancel)
       sheet.removeEventListener('pointerdown', pd)
       window.removeEventListener('pointermove', pm)
-      window.removeEventListener('pointerup', end)
+      window.removeEventListener('pointerup', pu)
     }
   }, [mounted])
 
@@ -116,7 +135,7 @@ export default function Sheet({ open, title = null, tall = false, onClose, child
     <div className={`sheet-layer${shown ? ' shown' : ''}`}>
       <div className="sheet-backdrop" ref={backRef} onClick={onClose} />
       <div className={`sheet${tall ? ' sheet-tall' : ''}`} ref={sheetRef} role="dialog" aria-modal="true" aria-label={title || undefined}>
-        <div className="sheet-grabber" aria-hidden="true" />
+        <div className="sheet-handle" aria-hidden="true"><div className="sheet-grabber" /></div>
         {title !== null && (
           <div className="sheet-head">
             <span className="sheet-title">{title}</span>

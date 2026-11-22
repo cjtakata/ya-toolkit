@@ -158,7 +158,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
     <div className={isSheet ? 'detail-sheet' : 'detail-pane'}>
       <div className="detail-header">
         {isSheet ? (
-          <div className="detail-nav detail-nav-sheet">
+          <div className="detail-nav detail-nav-sheet" data-sheet-handle>
             <button className={`copy-link-btn${copied ? ' copied' : ''}`} onClick={handleCopyLink} title="Copy link to this profile">
               {copied ? <><Check size={13} />Copied</> : <><Link2 size={13} />Copy Link</>}
             </button>
