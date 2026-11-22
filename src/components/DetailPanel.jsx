@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Check, Link2, ChevronLeft, ExternalLink, Flag, UserCheck, User, MessageCircle } from 'lucide-react'
+import { Check, Link2, ChevronLeft, ExternalLink, Flag, UserCheck, User, MessageCircle, Inbox, Hand, Undo2, CircleCheck, CircleMinus, Workflow } from 'lucide-react'
 import { LIST_META } from './listMeta.js'
 import { timeAgo, duration, shortDate, renderMessage, smsHref } from './cardMeta.js'
 
@@ -72,13 +72,20 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
     setNotes([])
     setNoteText('')
     setConfirmText(false)
+    loadFeed()
+  }, [person?.id])
+
+  // Notes + follow-up workflow history, newest first
+  function loadFeed() {
+    if (!person) return
     setNotesLoading(true)
-    fetch(`/api/notes?personId=${person.id}`)
+    const id = person.id
+    return fetch(`/api/notes?personId=${id}&history=1`)
       .then(r => r.ok ? r.json() : Promise.reject())
-      .then(data => setNotes(Array.isArray(data) ? data : []))
+      .then(data => { if (id === person.id) setNotes(Array.isArray(data) ? data : []) })
       .catch(() => {})
       .finally(() => setNotesLoading(false))
-  }, [person?.id])
+  }
 
   async function postNote() {
     const text = noteText.trim()
@@ -109,6 +116,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
     setCardBusy(true)
     try {
       await onCardAction(card, action)
+      loadFeed()                       // show the new claim / text in the history
     } catch (err) {
       alert(err.message)
     } finally {
@@ -116,6 +124,8 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
       setConfirmText(false)
     }
   }
+
+  const noteCount = notes.filter(n => n.kind !== 'workflow').length
 
   if (!person) {
     return (
@@ -284,8 +294,8 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
         {/* Comment-style notes → PCO Notes under "Young Adults" */}
         <div className="notes-section">
           <div className="field-section-title" style={{ justifyContent: 'space-between' }}>
-            <span>Notes</span>
-            {notes.length > 0 && <span className="notes-count">{notes.length}</span>}
+            <span>Notes & history</span>
+            {noteCount > 0 && <span className="notes-count">{noteCount}</span>}
           </div>
 
           <div className="note-compose">
@@ -310,7 +320,9 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
             <div className="notes-empty">No notes yet. Add the first one above.</div>
           ) : (
             <div className="notes-list">
-              {notes.map(n => (
+              {notes.map(n => n.kind === 'workflow' ? (
+                <HistoryItem key={n.id} item={n} currentUser={currentUser} />
+              ) : (
                 <div className="note-item" key={n.id}>
                   {n.followup ? (
                     <div className="note-avatar note-avatar-fu">
@@ -426,6 +438,29 @@ function CardSection({ card, person, currentUser, textTemplate, busy, confirming
           <div className="fu-sub">{timeAgo(card.claimedAt)} · they're planning to text {first}</div>
         </div>
       </div>
+    </div>
+  )
+}
+
+
+// ── One follow-up workflow event in the feed (card received, claimed, texted…) ──
+const HISTORY_ICONS = {
+  received:  { Icon: Inbox,        cls: 'hist-received' },
+  claimed:   { Icon: Hand,         cls: 'hist-claimed' },
+  released:  { Icon: Undo2,        cls: 'hist-muted' },
+  texted:    { Icon: MessageCircle, cls: 'hist-done' },
+  completed: { Icon: CircleCheck,  cls: 'hist-done' },
+  removed:   { Icon: CircleMinus,  cls: 'hist-muted' },
+  note:      { Icon: Workflow,     cls: 'hist-muted' },
+}
+function HistoryItem({ item, currentUser }) {
+  const { Icon, cls } = HISTORY_ICONS[item.event] || HISTORY_ICONS.note
+  const text = item.who && item.who === currentUser ? item.text.replace(item.who, 'you') : item.text
+  return (
+    <div className={`hist-item ${cls}`}>
+      <span className="hist-icon"><Icon size={14} strokeWidth={2.4} /></span>
+      <span className="hist-text">{text}</span>
+      <span className="note-time">{formatNoteDate(item.createdAt)}</span>
     </div>
   )
 }

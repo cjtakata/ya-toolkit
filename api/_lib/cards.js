@@ -159,3 +159,34 @@ export async function markTexted(cardId, leader) {
   await addNote(cardId, `Texted by ${leader} in YA Toolkit.`)
   return { ok: true }
 }
+
+// ── History: every follow-up event for one person, across all their cards ──
+// (someone who re-enters the workflow gets a new card; older cards are history)
+export async function personHistory(personId) {
+  const { data } = await pcoFetch(`/people/v2/people/${personId}/workflow_cards?per_page=100`)
+  const cards = (data || []).filter(c => String(c.relationships?.workflow?.data?.id) === WORKFLOW_ID)
+  const perCard = await mapLimit(cards, 4, async c => {
+    const a = c.attributes || {}
+    const notes = await getNotes(c.id).catch(() => [])
+    const events = [{ event: 'received', at: a.created_at, text: 'Connection card received' }]
+    let texted = false
+    for (const n of notes) {
+      const m = (n.note || '').match(NOTE_RE)
+      if (m) {
+        const [, kind, who] = m
+        const name = who.trim()
+        if (kind === 'Texted') texted = true
+        events.push({
+          event: kind.toLowerCase(), at: n.createdAt, who: name,
+          text: kind === 'Claimed' ? `Claimed by ${name}` : kind === 'Released' ? `Released by ${name}` : `Texted by ${name}`,
+        })
+      } else if (n.note) {
+        events.push({ event: 'note', at: n.createdAt, text: n.note })   // older formats, e.g. the retired text-reply flow
+      }
+    }
+    if (a.completed_at && !texted) events.push({ event: 'completed', at: a.completed_at, text: 'Marked done in Planning Center' })
+    if (a.removed_at) events.push({ event: 'removed', at: a.removed_at, text: 'Removed from follow-up' })
+    return events.map((e, i) => ({ id: `wf-${c.id}-${i}`, kind: 'workflow', cardId: c.id, ...e }))
+  })
+  return perCard.flat().filter(e => e.at)
+}

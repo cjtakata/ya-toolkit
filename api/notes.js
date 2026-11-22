@@ -1,5 +1,6 @@
 import { requireAuth } from './_lib/auth.js'
 import { pcoFetch } from './_lib/pco.js'
+import { personHistory } from './_lib/cards.js'
 
 const CATEGORY_NAME = 'Young Adults'
 const NOTE_MAX = 10000
@@ -45,17 +46,22 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Invalid person id' })
       }
 
-      const result = await pcoFetch(
-        `/people/v2/people/${personId}/notes?per_page=100&order=-created_at`
-      )
+      const [result, history] = await Promise.all([
+        pcoFetch(`/people/v2/people/${personId}/notes?per_page=100&order=-created_at`),
+        // Follow-up workflow events (card received, claimed, texted…) for the same feed
+        req.query.history ? personHistory(personId).catch(err => { console.error('history:', err.message); return [] }) : [],
+      ])
       const notes = (result.data || [])
         .filter(n => String(n.attributes?.note_category_id) === String(catId))
         .map(n => {
           const { author, body, followup } = parseNote(n.attributes?.note)
-          return { id: n.id, author, body, followup, createdAt: n.attributes?.created_at }
+          return { id: n.id, kind: 'note', author, body, followup, createdAt: n.attributes?.created_at }
         })
 
-      return res.json(notes)
+      if (!req.query.history) return res.json(notes)
+      const feed = [...notes, ...history.map(h => ({ ...h, createdAt: h.at }))]
+        .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+      return res.json(feed)
     }
 
     // ── Create a note on a person ─────────────────────────────

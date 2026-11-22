@@ -201,15 +201,27 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
 
   // Card guests may not have a YA Status that puts them on the People list yet —
   // fold them in so they're searchable and their profile opens.
-  const cardsByPerson = useMemo(() => Object.fromEntries(cards.map(c => [c.personId, c])), [cards])
+  // One card per person: their CURRENT card. Someone who re-enters the workflow
+  // gets a new card, so an open card (waiting/claimed) wins over a completed
+  // one; otherwise the newest. Older cards show up in the profile's history feed.
+  const currentCards = useMemo(() => {
+    const best = {}
+    const rank = c => (c.state === 'contacted' ? 0 : 1)
+    for (const c of cards) {
+      const b = best[c.personId]
+      if (!b || rank(c) > rank(b) || (rank(c) === rank(b) && (c.submittedAt || '') > (b.submittedAt || ''))) best[c.personId] = c
+    }
+    return Object.values(best)
+  }, [cards])
+  const cardsByPerson = useMemo(() => Object.fromEntries(currentCards.map(c => [c.personId, c])), [currentCards])
   const allPeople = useMemo(() => {
     const ids = new Set(people.map(p => p.id))
-    const extra = cards.filter(c => !ids.has(c.personId)).map(c => c.person)
+    const extra = currentCards.filter(c => !ids.has(c.personId)).map(c => c.person)
     return extra.length ? [...people, ...extra].sort((a, b) => a.name.localeCompare(b.name)) : people
-  }, [people, cards])
+  }, [people, currentCards])
 
-  const waitingCount = useMemo(() => cards.filter(c =>
-    c.state === 'waiting' && (!myCrew || myCrew === 'all' || c.person.list === myCrew)).length, [cards, myCrew])
+  const waitingCount = useMemo(() => currentCards.filter(c =>
+    c.state === 'waiting' && (!myCrew || myCrew === 'all' || c.person.list === myCrew)).length, [currentCards, myCrew])
 
   const selectedPerson = allPeople.find(p => p.id === selectedId) ?? null
 
@@ -270,7 +282,7 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
       <div className="app-body">
         <div className={`tab-view${tab === 'home' ? '' : ' tab-hidden'}`}>
           <HomeTab
-            cards={cards}
+            cards={currentCards}
             cardsLoading={cardsLoading}
             cardsError={cardsError}
             onRefresh={() => loadCards(true)}
