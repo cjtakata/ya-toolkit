@@ -60,12 +60,18 @@ export default function PeopleList({
     setList(crew); setCardF(cf); setStatus(preset.status || 'all'); setGender('all'); setSearch('')
   }, [preset]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const counts = useMemo(() => ({
-    all:         people.length,
-    college:     people.filter(p => p.list === 'college').length,
-    earlycareer: people.filter(p => p.list === 'earlycareer').length,
-    youngpro:    people.filter(p => p.list === 'youngpro').length,
-  }), [people])
+  // Archived people stay out of sight unless the YA Status filter asks for them
+  const isArchived = p => p.status === 'Archived'
+  const current = useMemo(() => people.filter(p => !isArchived(p)), [people])
+  const counts = useMemo(() => {
+    const pool = status === 'Archived' ? people.filter(isArchived) : current
+    return {
+      all:         pool.length,
+      college:     pool.filter(p => p.list === 'college').length,
+      earlycareer: pool.filter(p => p.list === 'earlycareer').length,
+      youngpro:    pool.filter(p => p.list === 'youngpro').length,
+    }
+  }, [people, current, status])
 
   const visible = useMemo(() => {
     let rows = people.filter(p => {
@@ -74,6 +80,7 @@ export default function PeopleList({
       const c = cardsByPerson[p.id]
       if (cardF === 'any' && !c) return false
       if (['waiting', 'claimed', 'contacted'].includes(cardF) && c?.state !== cardF) return false
+      if (status === 'all' && isArchived(p)) return false
       if (status !== 'all' && p.status !== status) return false
       if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false
       return true
@@ -100,7 +107,7 @@ export default function PeopleList({
       <div className="people-top">
         <header className="people-head">
           <h1 className="section-title">People</h1>
-          <span className="section-sub">{people.length} in Planning Center</span>
+          <span className="section-sub">{current.length} in Planning Center</span>
         </header>
 
         <div className="people-search-row">
@@ -134,7 +141,7 @@ export default function PeopleList({
           <Choices label="Connection card" value={cardF} onChange={setCardF} options={CARD_OPTIONS} />
           {statusOptions.length > 0 && (
             <Choices label="YA Status" value={status} onChange={setStatus}
-              options={[{ key: 'all', label: 'Any' }, ...statusOptions.map(v => ({ key: v, label: v }))]} />
+              options={[{ key: 'all', label: 'Current' }, ...statusOptions.map(v => ({ key: v, label: v }))]} />
           )}
           <Choices label="Gender" value={gender} onChange={setGender} options={GENDER_OPTIONS} />
           <Choices label="Sort by" value={sort} onChange={setSort} options={SORT_OPTIONS} />

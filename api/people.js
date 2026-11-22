@@ -6,7 +6,9 @@ import { normalizePerson, fetchPeopleByIds } from './_lib/person.js'
 // Active = engaged, Missing = drifted but still pursuing,
 // TBD = under evaluation / not yet categorised.
 // Friend, Alumni, Moved On are excluded (they drop off the care list).
-const ACTIVE_STATUSES = new Set(['Active', 'Missing', 'TBD', 'Leader', 'First Time Guest'])
+// YA Status options (2026-11-22): Active, Leader, Archived. Archived people are
+// loaded too, but the People list hides them unless the Archived filter is on.
+const ACTIVE_STATUSES = new Set(['Active', 'Leader', 'Archived'])
 
 
 export default async function handler(req, res) {

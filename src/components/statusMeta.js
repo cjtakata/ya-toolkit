@@ -8,6 +8,8 @@ const STATUS_CLASS = {
   alumni:         'badge-status-alumni',
   movedon:        'badge-status-movedon',
   firsttimeguest: 'badge-status-ftg',
+  leader:         'badge-status-leader',
+  archived:       'badge-status-movedon',
 }
 
 export function statusClass(status) {
