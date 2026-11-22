@@ -213,7 +213,6 @@ function NicknameRow({ user, onSave }) {
   const [status, setStatus] = useState('')
   const inputRef = useRef(null)
   useEffect(() => { if (!open) setValue(user.nickname || '') }, [user.nickname, open])
-  useEffect(() => { if (open) inputRef.current?.focus() }, [open])
   const dirty = value.trim() !== (user.nickname || '')
 
   async function save(e) {
