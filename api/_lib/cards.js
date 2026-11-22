@@ -67,6 +67,7 @@ const claimNote = (leader, assignedBy) => assignedBy
   ? `Claimed by ${leader} in YA Toolkit (assigned by ${assignedBy}).`
   : `Claimed by ${leader} in YA Toolkit.`
 const ASSIGNED_RE = /\(assigned by (.+?)\)/
+const WAS_RE      = /\(was (.+?)\)/
 const REMOVED_RE  = /^Removed from follow-up by (.+?) in YA Toolkit/
 
 // Where a card stands: 'waiting' | 'claimed' | 'contacted' | 'removed'
@@ -137,10 +138,10 @@ async function loadForAction(cardId) {
 // with { assignedBy }: same step move, same note format (plus "assigned by").
 // An admin may also hand an already-claimed guest to a different leader; that
 // adds a new Claimed note, and the latest Claimed note is who has them.
-export async function claimCard(cardId, leader, { assignedBy = null } = {}) {
+export async function claimCard(cardId, leader, { assignedBy = null, byAdmin = !!assignedBy } = {}) {
   const { state, who } = await loadForAction(cardId)
   if (state === 'claimed' && who.claimedBy === leader) return { ok: true }
-  if (state === 'claimed' && assignedBy) {
+  if (state === 'claimed' && byAdmin) {
     await addNote(cardId, claimNote(leader, assignedBy))
     return { ok: true }
   }
@@ -159,29 +160,45 @@ export async function claimCard(cardId, leader, { assignedBy = null } = {}) {
 
 // Admin only: take the card out of the workflow (PCO "remove"). The person's
 // profile is untouched; the card shows as removed in their history.
+// Only open cards (waiting or claimed); a texted guest's finished follow-up stays.
 export async function removeCard(cardId, admin) {
-  const { state } = await loadForAction(cardId)
+  const { state } = await loadForAction(cardId).catch(err => {
+    if (/PCO 404/.test(err.message)) return { state: 'removed' }   // already gone from PCO
+    throw err
+  })
   if (state === 'removed') return { ok: true }
-  await addNote(cardId, `Removed from follow-up by ${admin} in YA Toolkit.`)
+  if (state === 'contacted') throw new CardError(409, 'This guest has already been texted, so their follow-up is finished.')
   await remove(cardId)
-  if (cardState(await getCard(cardId)) !== 'removed') {
+  // Confirm it took. A card PCO no longer serves counts as removed.
+  const after = await getCard(cardId).catch(err => {
+    if (/PCO 404/.test(err.message)) return { attributes: { stage: 'removed' } }
+    throw err
+  })
+  if (cardState(after) !== 'removed') {
     throw new CardError(502, "Planning Center didn't remove the card. Try again.")
   }
+  // Note who removed it only once it's really removed, so a failed try leaves nothing behind.
+  await addNote(cardId, `Removed from follow-up by ${admin} in YA Toolkit.`)
+    .catch(err => console.error('remove note failed:', err.message))
   return { ok: true }
 }
 
 export async function releaseCard(cardId, leader, { admin = false } = {}) {
   const { state, who } = await loadForAction(cardId)
+  if (state === 'removed') throw new CardError(409, 'This guest was removed from follow-up.')
   if (state !== 'claimed') throw new CardError(409, 'Only a claimed guest can be released.')
   if (!admin && who.claimedBy && who.claimedBy !== leader) throw new CardError(403, `Only ${who.claimedBy} can release this guest.`)
   await goBack(cardId)
-  await addNote(cardId, `Released by ${leader} in YA Toolkit.`)
+  // An admin dropping someone else's claim says whose it was.
+  const was = admin && who.claimedBy && who.claimedBy !== leader ? ` (was ${who.claimedBy})` : ''
+  await addNote(cardId, `Released by ${leader} in YA Toolkit${was}.`)
   return { ok: true }
 }
 
 export async function markTexted(cardId, leader) {
   const { state, who } = await loadForAction(cardId)
   if (state === 'contacted') return { ok: true }
+  if (state === 'removed')   throw new CardError(409, 'This guest was removed from follow-up.')
   if (state === 'claimed' && who.claimedBy && who.claimedBy !== leader) {
     throw new CardError(409, `${who.claimedBy} has claimed this guest.`)
   }
@@ -203,21 +220,27 @@ export async function personHistory(personId) {
     const a = c.attributes || {}
     const notes = await getNotes(c.id).catch(() => [])
     const events = [{ event: 'received', at: a.created_at, text: 'Connection card received' }]
-    let texted = false, removedBy = null
-    for (const n of notes) {
+    let texted = false, removedBy = null, holder = null
+    for (const n of [...notes].sort((x, y) => x.createdAt.localeCompare(y.createdAt))) {
       const m = (n.note || '').match(NOTE_RE)
       const r = (n.note || '').match(REMOVED_RE)
       if (r) { removedBy = r[1].trim(); continue }   // shown on the "removed" event below
       if (m) {
         const [, kind, who] = m
         const name = who.trim()
-        const by = kind === 'Claimed' ? (n.note.match(ASSIGNED_RE)?.[1] || '').trim() : ''
+        const by  = kind === 'Claimed'  ? (n.note.match(ASSIGNED_RE)?.[1] || '').trim() : ''
+        const was = kind === 'Released' ? (n.note.match(WAS_RE)?.[1] || '').trim() : ''
+        const from = kind === 'Claimed' && holder && holder !== name ? holder : ''
         if (kind === 'Texted') texted = true
         events.push({
           event: kind.toLowerCase(), at: n.createdAt, who: name,
-          text: kind === 'Claimed' ? (by ? `Assigned to ${name} by ${by}` : `Claimed by ${name}`)
-              : kind === 'Released' ? `Released by ${name}` : `Texted by ${name}`,
+          text: kind === 'Claimed'
+                  ? (from ? `Reassigned from ${from} to ${name}${by ? ` by ${by}` : ''}`
+                     : by ? `Assigned to ${name} by ${by}` : `Claimed by ${name}`)
+              : kind === 'Released' ? (was ? `${name} released ${was}'s claim` : `Released by ${name}`)
+              : `Texted by ${name}`,
         })
+        holder = kind === 'Released' ? null : name
       } else if (n.note) {
         events.push({ event: 'note', at: n.createdAt, text: n.note })   // older formats, e.g. the retired text-reply flow
       }

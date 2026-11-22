@@ -51,13 +51,14 @@ export default async function handler(req, res) {
         } else {
           const leaderId = String(req.body?.leaderId || '')
           if (!/^\d+$/.test(leaderId)) return res.status(400).json({ error: 'Pick a leader to assign.' })
-          if (!(await isLeaderPerson(leaderId))) return res.status(422).json({ error: "That person isn't a YA Leader." })
+          if (!(await isLeaderPerson(leaderId))) return res.status(422).json({ error: "Couldn't confirm that person is a YA Leader. Try again." })
           // Same name the leader signs in with (first + last), so the claim shows
           // as theirs on their own Home screen.
           const { data } = await pcoFetch(`/people/v2/people/${leaderId}`)
           const name = [data?.attributes?.first_name, data?.attributes?.last_name].filter(Boolean).join(' ')
           if (!name) return res.status(422).json({ error: "Couldn't find that leader in Planning Center." })
-          await claimCard(String(cardId), name, { assignedBy: leader })
+          // Assigning yourself reads as a plain claim (or a reassignment to you).
+          await claimCard(String(cardId), name, { assignedBy: name === leader ? null : leader, byAdmin: true })
         }
         _cache = null
         return res.json({ ok: true })

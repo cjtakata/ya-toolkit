@@ -415,6 +415,7 @@ function AdminCardTools({ card, person, leaders, currentUser, busy, onAction }) 
   const [confirmRemove, setConfirmRemove] = useState(false)
   const first = person.name.split(' ')[0]
   const open  = card.state === 'waiting' || card.state === 'claimed'
+  if (!open) return null   // a texted guest's follow-up is finished; nothing to assign or remove
   const choices = [...leaders]
     .filter(l => l.name !== card.claimedBy)
     .sort((a, b) => a.name.localeCompare(b.name))
@@ -457,9 +458,11 @@ function AdminCardTools({ card, person, leaders, currentUser, busy, onAction }) 
             Release {card.claimedBy.split(' ')[0]}'s claim
           </button>
         )}
-        <button className="fu-inline-link fu-link-danger" onClick={() => setConfirmRemove(true)} disabled={busy}>
-          Remove from follow-up
-        </button>
+        {open && (
+          <button className="fu-inline-link fu-link-danger" onClick={() => setConfirmRemove(true)} disabled={busy}>
+            Remove from follow-up
+          </button>
+        )}
       </div>
     </div>
   )

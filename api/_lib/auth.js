@@ -85,9 +85,19 @@ export function isAdmin(user) {
   return !!user && adminIds().has(String(user.id))
 }
 
-// Is this PCO person a current YA Leader? (same check sign-in uses, cached)
+// Is this PCO person a current YA Leader? Used when an admin assigns a guest.
+// Unlike stillLeader, this fails closed: if PCO can't answer, the answer is no.
 export async function isLeaderPerson(pcoId) {
-  return /^\d+$/.test(String(pcoId)) && stillLeader(String(pcoId))
+  if (!/^\d+$/.test(String(pcoId))) return false
+  try {
+    const { data } = await pcoFetch(
+      `/people/v2/people/${pcoId}/field_data?where%5Bfield_definition_id%5D=${STATUS_DEF}&per_page=1`
+    )
+    return data?.[0]?.attributes?.value === 'Leader'
+  } catch (err) {
+    console.error('leader check for assign failed:', err.message)
+    return false
+  }
 }
 
 export async function requireAuth(req, res) {
