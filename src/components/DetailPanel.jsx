@@ -36,7 +36,8 @@ function formatNoteDate(iso) {
     : { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-export default function DetailPanel({ person, crewOptions = [], statusOptions = [], currentUser, textTemplate = '', backLabel = 'Back', card = null, onCardAction, onClose, onSave }) {
+export default function DetailPanel({ person, crewOptions = [], statusOptions = [], currentUser, textTemplate = '', backLabel = 'Back', variant = 'pane', card = null, onCardAction, onClose, onSave }) {
+  const isSheet = variant === 'sheet'   // phones: shown inside a slide-up Sheet
   const crewChoices   = crewOptions.length   ? crewOptions   : CREW_FALLBACK
   const statusChoices = statusOptions.length ? statusOptions : STATUS_FALLBACK
   const [draft, setDraft]       = useState(null)
@@ -154,16 +155,25 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
   if (!draft) return null
 
   return (
-    <div className={`detail-pane${window.innerWidth <= 700 ? ' open' : ''}`}>
+    <div className={isSheet ? 'detail-sheet' : 'detail-pane'}>
       <div className="detail-header">
-        <div className="detail-nav">
-          <button className="back-btn" onClick={onClose}>
-            <ChevronLeft size={20} strokeWidth={2.4} />{backLabel}
-          </button>
-          <button className={`copy-link-btn${copied ? ' copied' : ''}`} onClick={handleCopyLink} title="Copy link to this profile">
-            {copied ? <><Check size={13} />Copied</> : <><Link2 size={13} />Copy Link</>}
-          </button>
-        </div>
+        {isSheet ? (
+          <div className="detail-nav detail-nav-sheet">
+            <button className={`copy-link-btn${copied ? ' copied' : ''}`} onClick={handleCopyLink} title="Copy link to this profile">
+              {copied ? <><Check size={13} />Copied</> : <><Link2 size={13} />Copy Link</>}
+            </button>
+            <button className="sheet-done-inline" onClick={onClose}>Done</button>
+          </div>
+        ) : (
+          <div className="detail-nav">
+            <button className="back-btn" onClick={onClose}>
+              <ChevronLeft size={20} strokeWidth={2.4} />{backLabel}
+            </button>
+            <button className={`copy-link-btn${copied ? ' copied' : ''}`} onClick={handleCopyLink} title="Copy link to this profile">
+              {copied ? <><Check size={13} />Copied</> : <><Link2 size={13} />Copy Link</>}
+            </button>
+          </div>
+        )}
         <div className="detail-header-top">
           <div className="detail-person">
             <div className="detail-avatar" style={{ background: person.color }}>

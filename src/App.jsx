@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import LoginScreen from './components/LoginScreen.jsx'
 import PeopleList from './components/PeopleList.jsx'
 import DetailPanel from './components/DetailPanel.jsx'
@@ -207,6 +207,19 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
 
   const selectedPerson = allPeople.find(p => p.id === selectedId) ?? null
 
+  // Phones show a person in a slide-up sheet; wider screens use the side panel.
+  const [isPhone, setIsPhone] = useState(() => window.matchMedia('(max-width: 700px)').matches)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 700px)')
+    const on = () => setIsPhone(mq.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
+  // Keep showing the last person while the sheet slides away
+  const lastPersonRef = useRef(null)
+  if (selectedPerson) lastPersonRef.current = selectedPerson
+  const sheetPerson = selectedPerson || lastPersonRef.current
+
   async function handleSave(id, body) {
     const res = await fetch(`/api/person/${id}`, {
       method: 'PATCH',
@@ -281,7 +294,7 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
             currentUser={currentUser}
           />
         </div>
-        <DetailPanel
+        {!isPhone && <DetailPanel
           person={selectedPerson}
           crewOptions={crewOptions}
           statusOptions={statusOptions}
@@ -292,8 +305,25 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
           backLabel={tab === 'home' ? 'Home' : 'Directory'}
           onClose={() => setSelectedId(null)}
           onSave={handleSave}
-        />
+        />}
       </div>
+      {isPhone && (
+        <Sheet open={!!selectedPerson} tall onClose={() => setSelectedId(null)}>
+          <DetailPanel
+          variant="sheet"
+          person={sheetPerson}
+          crewOptions={crewOptions}
+          statusOptions={statusOptions}
+          currentUser={currentUser}
+          textTemplate={user.textMessage || ''}
+          card={sheetPerson ? cardsByPerson[sheetPerson.id] || null : null}
+          onCardAction={handleCardAction}
+          backLabel={tab === 'home' ? 'Home' : 'Directory'}
+          onClose={() => setSelectedId(null)}
+          onSave={handleSave}
+        />
+        </Sheet>
+      )}
       <Sheet open={profileOpen} title="Profile" onClose={() => setProfileOpen(false)}>
         <ProfileTab user={user} myCrew={myCrew} onChooseCrew={chooseCrew} onLogout={handleLogout}
           onSaveMessage={saveTextMessage} />
