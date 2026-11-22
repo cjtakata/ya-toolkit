@@ -1,7 +1,34 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Search, TriangleAlert } from 'lucide-react'
+import { Search, SlidersHorizontal, X, Check } from 'lucide-react'
 import PersonRow from './PersonRow.jsx'
+import Sheet from './Sheet.jsx'
 import { CREW_OPTIONS, CREW_LABEL } from './listMeta.js'
+
+const CARD_OPTIONS = [
+  { key: 'all',       label: 'Any' },
+  { key: 'any',       label: 'Has a card' },
+  { key: 'waiting',   label: 'Not claimed' },
+  { key: 'claimed',   label: 'Claimed, not texted' },
+  { key: 'contacted', label: 'Texted' },
+]
+const GENDER_OPTIONS = [{ key: 'all', label: 'Any' }, { key: 'male', label: 'Male' }, { key: 'female', label: 'Female' }]
+const SORT_OPTIONS   = [{ key: 'name', label: 'Name' }, { key: 'card', label: 'Newest connection card' }]
+
+// Pill group used inside the filter sheet
+function Choices({ label, options, value, onChange }) {
+  return (
+    <div className="fchoices">
+      <div className="fchoices-label">{label}</div>
+      <div className="fchoices-row">
+        {options.map(o => (
+          <button key={o.key} className={`fchip${value === o.key ? ' on' : ''}`} onClick={() => onChange(o.key)}>
+            {value === o.key && <Check size={13} strokeWidth={3} />}{o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 const LIST_OPTIONS = CREW_OPTIONS
 
@@ -9,14 +36,13 @@ export default function PeopleList({
   people, loading, error, statusOptions = [],
   myCrew = 'all', preset = null, cardsByPerson = {}, selectedId, onSelect, currentUser,
 }) {
-  const hasCrew = myCrew && myCrew !== 'all'
-
   const [list, setList]         = useState(() => myCrew || 'all')
   const [gender, setGender]     = useState('all')
   const [cardF, setCardF]       = useState('all')   // connection-card filter
   const [status, setStatus]     = useState('all')
   const [search, setSearch]     = useState('')
   const [sort, setSort]         = useState('name')
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   // When the leader changes their crew on the Profile tab, focus the list on it.
   const firstRun = useRef(true)
@@ -33,19 +59,6 @@ export default function PeopleList({
     const crew = preset.crew && (preset.crew === 'all' || CREW_LABEL[preset.crew]) ? preset.crew : (myCrew || 'all')
     setList(crew); setCardF(cf); setStatus(preset.status || 'all'); setGender('all'); setSearch('')
   }, [preset]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const myCrewStats = useMemo(() => {
-    if (!hasCrew) return null
-    const mine = people.filter(p => p.list === myCrew)
-    return { total: mine.length, waiting: mine.filter(p => cardsByPerson[p.id]?.state === 'waiting').length }
-  }, [people, myCrew, hasCrew, cardsByPerson])
-
-  function focusMyCrew() {
-    setList(myCrew); setGender('all'); setCardF('all'); setStatus('all'); setSearch('')
-  }
-  function focusFollowup() {
-    setList(myCrew); setCardF('waiting'); setSearch('')
-  }
 
   const counts = useMemo(() => ({
     all:         people.length,
@@ -71,76 +84,68 @@ export default function PeopleList({
     return rows
   }, [people, list, gender, cardF, status, search, sort, cardsByPerson])
 
+  // Active filters (crew counts as active only when it differs from "All crews")
+  const activeChips = [
+    list !== 'all'    && { key: 'crew',   label: CREW_LABEL[list] || list, clear: () => setList('all') },
+    cardF !== 'all'   && { key: 'card',   label: CARD_OPTIONS.find(o => o.key === cardF)?.label, clear: () => setCardF('all') },
+    status !== 'all'  && { key: 'status', label: status, clear: () => setStatus('all') },
+    gender !== 'all'  && { key: 'gender', label: GENDER_OPTIONS.find(o => o.key === gender)?.label, clear: () => setGender('all') },
+    sort !== 'name'   && { key: 'sort',   label: 'Newest card first', clear: () => setSort('name') },
+  ].filter(Boolean)
+  const activeCount = activeChips.filter(c => c.key !== 'sort').length
+  function resetFilters() { setList('all'); setCardF('all'); setStatus('all'); setGender('all'); setSort('name') }
+
   return (
     <div className="people-pane">
-      <header className="section-head section-head-list">
-        <h1 className="section-title">Directory</h1>
-        <span className="section-sub">{people.length} people in Planning Center</span>
-      </header>
-      {hasCrew && myCrewStats && (
-        <div className="mycrew-banner">
-          <div>
-            <span className="mycrew-label">Your crew:</span>
-            <strong>{CREW_LABEL[myCrew]}</strong> · {myCrewStats.total} people
+      <div className="people-top">
+        <header className="people-head">
+          <h1 className="section-title">People</h1>
+          <span className="section-sub">{people.length} in Planning Center</span>
+        </header>
+
+        <div className="people-search-row">
+          <div className="search-wrap">
+            <Search className="search-icon" size={15} />
+            <input className="search-input" type="search" placeholder="Search by name"
+              value={search} onChange={e => setSearch(e.target.value)} />
           </div>
-          <div className="mycrew-actions">
-            <button onClick={focusMyCrew}>View my crew</button>
-            {myCrewStats.waiting > 0 && (
-              <button className="mycrew-followup" onClick={focusFollowup}>
-                <TriangleAlert size={13} /> {myCrewStats.waiting} not claimed
+          <button className={`filters-btn${activeCount ? ' on' : ''}`} onClick={() => setFiltersOpen(true)}>
+            <SlidersHorizontal size={16} />
+            Filters{activeCount > 0 && <span className="filters-count">{activeCount}</span>}
+          </button>
+        </div>
+
+        {activeChips.length > 0 && (
+          <div className="active-chips">
+            {activeChips.map(c => (
+              <button key={c.key} className="active-chip" onClick={c.clear} aria-label={`Remove filter ${c.label}`}>
+                {c.label}<X size={13} strokeWidth={2.5} />
               </button>
-            )}
+            ))}
+          </div>
+        )}
+        <div className="people-count">{visible.length} {visible.length === 1 ? 'person' : 'people'}</div>
+      </div>
+
+      <Sheet open={filtersOpen} title="Filters" onClose={() => setFiltersOpen(false)}>
+        <div className="filter-sheet">
+          <Choices label="Crew" value={list} onChange={setList}
+            options={LIST_OPTIONS.map(o => ({ key: o.key, label: `${o.label} · ${counts[o.key]}` }))} />
+          <Choices label="Connection card" value={cardF} onChange={setCardF} options={CARD_OPTIONS} />
+          {statusOptions.length > 0 && (
+            <Choices label="YA Status" value={status} onChange={setStatus}
+              options={[{ key: 'all', label: 'Any' }, ...statusOptions.map(v => ({ key: v, label: v }))]} />
+          )}
+          <Choices label="Gender" value={gender} onChange={setGender} options={GENDER_OPTIONS} />
+          <Choices label="Sort by" value={sort} onChange={setSort} options={SORT_OPTIONS} />
+          <div className="filter-actions">
+            <button className="msg-reset" onClick={resetFilters} disabled={!activeCount && sort === 'name'}>Reset</button>
+            <button className="login-btn" onClick={() => setFiltersOpen(false)}>
+              Show {visible.length} {visible.length === 1 ? 'person' : 'people'}
+            </button>
           </div>
         </div>
-      )}
-
-      <div className="list-toolbar">
-        <div className="search-wrap">
-          <Search className="search-icon" size={15} />
-          <input
-            className="search-input"
-            type="search"
-            placeholder="Search by name…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-        </div>
-        <div className="filter-row">
-          <select className="filter-select" value={list} onChange={e => setList(e.target.value)}>
-            {LIST_OPTIONS.map(o => (
-              <option key={o.key} value={o.key}>{o.label} ({counts[o.key]})</option>
-            ))}
-          </select>
-          <select className="filter-select" value={gender} onChange={e => setGender(e.target.value)}>
-            <option value="all">All genders</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-          </select>
-          <select className="filter-select" value={cardF} onChange={e => setCardF(e.target.value)}>
-            <option value="all">Any card status</option>
-            <option value="any">Has a connection card</option>
-            <option value="waiting">Card · not claimed</option>
-            <option value="claimed">Card · claimed, not texted</option>
-            <option value="contacted">Card · texted</option>
-          </select>
-          {statusOptions.length > 0 && (
-            <select className="filter-select" value={status} onChange={e => setStatus(e.target.value)}>
-              <option value="all">Any status</option>
-              {statusOptions.map(s => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-          )}
-        </div>
-      </div>
-
-      <div className="list-meta">
-        <span><strong>{visible.length}</strong> people</span>
-        <select className="sort-select" value={sort} onChange={e => setSort(e.target.value)}>
-          <option value="name">Sort: Name</option>
-          <option value="card">Sort: Newest connection card</option>
-        </select>
-      </div>
+      </Sheet>
 
       <div className="people-list">
         {loading && <div className="empty-state">Loading people from PCO…</div>}

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ChevronRight, UserRoundSearch, Hand, Clock, MessageCircleHeart, PartyPopper, RefreshCw } from 'lucide-react'
+import { UserRoundSearch, Hand, Clock, MessageCircleHeart, PartyPopper, RefreshCw } from 'lucide-react'
 import CardRow from './CardRow.jsx'
 import { CREW_LABEL } from './listMeta.js'
 
@@ -38,7 +38,6 @@ export default function HomeTab({
 
   const crewLabel = myCrew && myCrew !== 'all' ? CREW_LABEL[myCrew] : 'All crews'
   const first     = (currentUser || '').split(' ')[0] || 'there'
-  const scopeCount = (myCrew && myCrew !== 'all') ? people.filter(p => p.list === myCrew).length : people.length
   const jump = id => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
   const row = c => (
@@ -52,9 +51,6 @@ export default function HomeTab({
       <div className="home-inner">
         <header className="section-head">
           <h1 className="section-title">{greeting()}, {first}</h1>
-          <button className="section-sub section-sub-link" onClick={onChangeCrew}>
-            {crewLabel} · {scopeCount} people <ChevronRight size={14} />
-          </button>
         </header>
 
 

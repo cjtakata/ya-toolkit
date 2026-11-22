@@ -302,7 +302,7 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
           textTemplate={user.textMessage || ''}
           card={selectedPerson ? cardsByPerson[selectedPerson.id] || null : null}
           onCardAction={handleCardAction}
-          backLabel={tab === 'home' ? 'Home' : 'Directory'}
+          backLabel={tab === 'home' ? 'Home' : 'People'}
           onClose={() => setSelectedId(null)}
           onSave={handleSave}
         />}
@@ -318,7 +318,7 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
           textTemplate={user.textMessage || ''}
           card={sheetPerson ? cardsByPerson[sheetPerson.id] || null : null}
           onCardAction={handleCardAction}
-          backLabel={tab === 'home' ? 'Home' : 'Directory'}
+          backLabel={tab === 'home' ? 'Home' : 'People'}
           onClose={() => setSelectedId(null)}
           onSave={handleSave}
         />

@@ -1,13 +1,13 @@
-import { House, BookUser } from 'lucide-react'
+import { House, Users } from 'lucide-react'
 
-// Top bar = app chrome only: YA mark · Home / Directory switcher · avatar.
+// Top bar = app chrome only: YA mark · Home / People switcher · avatar.
 // Everything below it belongs to the section you're on. Nothing is pinned to
 // the bottom, so Safari's own toolbar keeps the bottom of the screen.
 const LOGO = `${import.meta.env.BASE_URL.replace(/\/?$/, '/')}ya.svg`   // /people/ya.svg
 
 const SEGMENTS = [
   { key: 'home',   label: 'Home',      Icon: House },
-  { key: 'search', label: 'Directory', Icon: BookUser },
+  { key: 'search', label: 'People',    Icon: Users },
 ]
 
 export default function AppTopBar({ tab, onChange, user, badge = 0, onOpenProfile }) {
