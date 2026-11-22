@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Check, Link2, ChevronLeft, ChevronsUpDown, ExternalLink, Flag, UserCheck, User, MessageCircle, Inbox, Hand, Undo2, CircleCheck, CircleMinus, Workflow } from 'lucide-react'
+import { Check, Link2, ChevronLeft, ExternalLink, Flag, UserCheck, User, MessageCircle, Inbox, Hand, Undo2, CircleCheck, CircleMinus, Workflow } from 'lucide-react'
 import { LIST_META } from './listMeta.js'
+import PickerRow from './PickerRow.jsx'
 import { timeAgo, duration, shortDate, renderMessage, smsHref } from './cardMeta.js'
 
 const CREW_FALLBACK   = ['College Life', 'Early Career', 'Young Professional']
@@ -260,28 +261,10 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
           </div>
 
           <div className="picker-group">
-            <label className="picker-row">
-              <span className="picker-label">YA Status</span>
-              <span className={`picker-value${draft.status ? '' : ' empty'}`}>
-                {draft.status || 'Not set'}<ChevronsUpDown size={15} />
-              </span>
-              <select className="picker-native" value={draft.status} aria-label="YA Status"
-                onChange={e => update('status', e.target.value)}>
-                <option value="">Not set</option>
-                {statusChoices.map(v => <option key={v} value={v}>{v}</option>)}
-              </select>
-            </label>
-            <label className="picker-row">
-              <span className="picker-label">Crew</span>
-              <span className={`picker-value${draft.crew ? '' : ' empty'}`}>
-                {(draft.crew || '').trim() || 'Not assigned'}<ChevronsUpDown size={15} />
-              </span>
-              <select className="picker-native" value={draft.crew} aria-label="Crew"
-                onChange={e => update('crew', e.target.value)}>
-                <option value="">Not assigned</option>
-                {crewChoices.map(v => <option key={v} value={v}>{v.trim()}</option>)}
-              </select>
-            </label>
+            <PickerRow label="YA Status" value={draft.status} options={statusChoices}
+              emptyLabel="Not set" onChange={v => update('status', v)} />
+            <PickerRow label="Crew" value={draft.crew} options={crewChoices}
+              emptyLabel="Not assigned" onChange={v => update('crew', v)} />
           </div>
         </div>
 

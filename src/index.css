@@ -928,7 +928,7 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
 .msg-save { width: auto; padding: 10px 18px; }
 
 /* ── People: compact header, Filters sheet ───────────────── */
-.people-top { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 16px; }
+.people-top { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 16px 12px; }
 .people-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
 .people-head .section-sub { margin-top: 0; }
 .people-search-row { display: flex; gap: 8px; align-items: stretch; }
@@ -944,7 +944,7 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
   background: var(--primary); color: #fff; font-size: var(--fs-caption); font-weight: var(--fw-bold);
 }
 .people-list-head { padding: 6px 8px 4px; }
-.active-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.active-chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .active-chips::-webkit-scrollbar { display: none; }
 .active-chip {
   display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; white-space: nowrap;
@@ -975,7 +975,8 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
 }
 
 /* 44pt touch areas for small buttons (Apple HIG) — the visible button stays the same size */
-.row-claim, .copy-link-btn, .pco-link, .home-link, .active-chip, .msg-reset, .back-btn, .sheet-done, .sheet-done-inline {
+/* (.sheet-done is already absolutely positioned, which also anchors its ::after) */
+.row-claim, .copy-link-btn, .pco-link, .home-link, .active-chip, .msg-reset, .back-btn, .sheet-done-inline {
   position: relative;
 }
 .row-claim::after, .copy-link-btn::after, .pco-link::after, .home-link::after,
@@ -1012,21 +1013,37 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
 }
 .feed-more:hover { background: var(--primary-light); }
 
-/* App-native pickers: grouped rows, the phone's own picker opens on tap */
-.picker-group { background: var(--bg); border-radius: 12px; overflow: hidden; margin-top: 8px; }
-.picker-row {
-  position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  min-height: 48px; padding: 0 14px; cursor: pointer;
-}
+/* Settings-style picker rows that open the app's own menu card */
+.picker-group { background: var(--bg); border-radius: 12px; margin-top: 8px; }
+.picker-row { position: relative; }
 .picker-row + .picker-row { border-top: 1px solid var(--border); }
+.picker-trigger {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  min-height: 48px; padding: 0 14px; background: none; border: none; cursor: pointer;
+  font-family: inherit; text-align: left; border-radius: 12px;
+  -webkit-tap-highlight-color: transparent;
+}
+.picker-trigger:active, .picker-row.open .picker-trigger { background: rgba(118,118,128,.08); }
 .picker-label { font-size: var(--fs-body); color: var(--text); }
 .picker-value {
   display: inline-flex; align-items: center; gap: 4px; min-width: 0;
   font-size: var(--fs-body); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.picker-value.empty { color: var(--border); color: #9ca3af; }
-.picker-native {
-  position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;
-  font-size: 16px; -webkit-appearance: none; appearance: none;
+.picker-row.open .picker-value { color: var(--primary); }
+.picker-value.empty { color: #9ca3af; }
+.picker-menu {
+  position: absolute; right: 8px; top: calc(100% - 4px); z-index: 20; min-width: 220px;
+  background: var(--surface); border-radius: 14px; padding: 6px;
+  box-shadow: 0 12px 32px rgba(0,0,0,.18), 0 2px 6px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.04);
+  transform-origin: top right; animation: picker-in .18s cubic-bezier(.2,.8,.3,1);
 }
-.picker-row:focus-within { background: var(--primary-light); }
+@keyframes picker-in { from { opacity: 0; transform: scale(.92) translateY(-4px); } to { opacity: 1; transform: none; } }
+.picker-option {
+  width: 100%; display: flex; align-items: center; gap: 8px;
+  min-height: 44px; padding: 0 12px 0 6px; border: none; border-radius: 9px; background: none;
+  font-family: inherit; font-size: var(--fs-body); color: var(--text); text-align: left; cursor: pointer;
+}
+.picker-option:hover { background: var(--bg); }
+.picker-option.on { color: var(--primary); font-weight: var(--fw-semibold); }
+.picker-option.muted { color: var(--muted); }
+.picker-check { width: 20px; display: flex; justify-content: center; color: var(--primary); flex-shrink: 0; }
