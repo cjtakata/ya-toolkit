@@ -5,7 +5,7 @@ import DetailPanel from './components/DetailPanel.jsx'
 import AppTopBar from './components/AppTopBar.jsx'
 import Sheet from './components/Sheet.jsx'
 
-import HomeTab from './components/HomeTab.jsx'
+import HomeTab, { inCrew } from './components/HomeTab.jsx'
 import ProfileTab from './components/ProfileTab.jsx'
 
 function LoadingScreen({ label, progress }) {
@@ -222,7 +222,7 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
   }, [people, currentCards])
 
   const waitingCount = useMemo(() => currentCards.filter(c =>
-    c.state === 'waiting' && (!myCrew || myCrew === 'all' || c.person.list === myCrew)).length, [currentCards, myCrew])
+    c.state === 'waiting' && inCrew(c, myCrew)).length, [currentCards, myCrew])
 
   const selectedPerson = allPeople.find(p => p.id === selectedId) ?? null
   // Admins pick from these when assigning a guest (YA Status = Leader)
