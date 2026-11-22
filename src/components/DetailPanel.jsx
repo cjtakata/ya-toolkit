@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Check, Link2, ChevronLeft, ExternalLink, Flag, UserCheck, User, MessageCircle } from 'lucide-react'
 import { LIST_META } from './listMeta.js'
-import { timeAgo, duration, shortDate, welcomeText, smsHref } from './cardMeta.js'
+import { timeAgo, duration, shortDate, renderMessage, smsHref } from './cardMeta.js'
 
 const CREW_FALLBACK   = ['College Life', 'Early Career', 'Young Professional']
 const STATUS_FALLBACK = ['First Time Guest', 'Active', 'Missing', 'Friend', 'Alumni', 'Moved On']
@@ -36,7 +36,7 @@ function formatNoteDate(iso) {
     : { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-export default function DetailPanel({ person, crewOptions = [], statusOptions = [], currentUser, backLabel = 'Back', card = null, onCardAction, onClose, onSave }) {
+export default function DetailPanel({ person, crewOptions = [], statusOptions = [], currentUser, textTemplate = '', backLabel = 'Back', card = null, onCardAction, onClose, onSave }) {
   const crewChoices   = crewOptions.length   ? crewOptions   : CREW_FALLBACK
   const statusChoices = statusOptions.length ? statusOptions : STATUS_FALLBACK
   const [draft, setDraft]       = useState(null)
@@ -222,7 +222,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
 
         {card && (
           <CardSection
-            card={card} person={person} currentUser={currentUser} busy={cardBusy}
+            card={card} person={person} currentUser={currentUser} textTemplate={textTemplate} busy={cardBusy}
             confirming={confirmText} onTextOpened={() => setConfirmText(true)}
             onAction={cardAction} onCancelConfirm={() => setConfirmText(false)}
           />
@@ -331,11 +331,11 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
 
 
 // ── Connection card: claimed? texted? ──────────────────────────────
-function CardSection({ card, person, currentUser, busy, confirming, onTextOpened, onAction, onCancelConfirm }) {
+function CardSection({ card, person, currentUser, textTemplate, busy, confirming, onTextOpened, onAction, onCancelConfirm }) {
   const mine     = card.claimedBy && card.claimedBy === currentUser
   const first    = person.name.split(' ')[0]
   const crewName = (person.crew || '').trim()
-  const body     = welcomeText({ guestFirst: first, leaderFirst: (currentUser || '').split(' ')[0], crew: crewName })
+  const body     = renderMessage(textTemplate, { guestFirst: first, leaderFirst: (currentUser || '').split(' ')[0], crew: crewName })
   const submitted = `Card ${shortDate(card.submittedAt)} · ${timeAgo(card.submittedAt)}`
 
   const textButton = person.phone ? (

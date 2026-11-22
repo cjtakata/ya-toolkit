@@ -34,7 +34,7 @@ export default function App() {
   if (authLoading) return <LoadingScreen label="Checking authentication…" progress={20} />
   if (!user) return <LoginScreen />
 
-  return <AuthenticatedApp user={user} onLogout={() => setUser(null)} />
+  return <AuthenticatedApp user={user} onUserChange={u => setUser(prev => ({ ...prev, ...u }))} onLogout={() => setUser(null)} />
 }
 
 // URL hash routes: #/home · #/search · #/profile · #/person/<id> (opens over the current tab)
@@ -56,7 +56,7 @@ function readUrlPreset() {
   return { card, crew, status, n: 0 }
 }
 
-function AuthenticatedApp({ user, onLogout }) {
+function AuthenticatedApp({ user, onUserChange, onLogout }) {
   const [people, setPeople]           = useState([])
   const [loading, setLoading]         = useState(true)
   const [error, setError]             = useState(null)
@@ -217,6 +217,17 @@ function AuthenticatedApp({ user, onLogout }) {
     return updated
   }
 
+  async function saveTextMessage(textMessage) {
+    const res = await fetch('/api/me', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ textMessage }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error || `Couldn't save (HTTP ${res.status})`)
+    onUserChange({ textMessage: data.textMessage })
+  }
+
   async function handleLogout() {
     await fetch('/api/auth/logout')
     onLogout()
@@ -260,13 +271,15 @@ function AuthenticatedApp({ user, onLogout }) {
           />
         </div>
         <div className={`tab-view${tab === 'profile' ? '' : ' tab-hidden'}`}>
-          <ProfileTab user={user} myCrew={myCrew} onChooseCrew={chooseCrew} onLogout={handleLogout} />
+          <ProfileTab user={user} myCrew={myCrew} onChooseCrew={chooseCrew} onLogout={handleLogout}
+            onSaveMessage={saveTextMessage} />
         </div>
         <DetailPanel
           person={selectedPerson}
           crewOptions={crewOptions}
           statusOptions={statusOptions}
           currentUser={currentUser}
+          textTemplate={user.textMessage || ''}
           card={selectedPerson ? cardsByPerson[selectedPerson.id] || null : null}
           onCardAction={handleCardAction}
           backLabel={tab === 'home' ? 'Home' : tab === 'search' ? 'People' : 'Back'}

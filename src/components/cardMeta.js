@@ -35,12 +35,25 @@ export function hoursSince(iso) {
   return iso ? (Date.now() - new Date(iso).getTime()) / 3_600_000 : 0
 }
 
-// The text leaders can send — prefilled in Messages, fully editable before sending.
-export function welcomeText({ guestFirst, leaderFirst, crew }) {
-  const where = crew ? `${crew} crew` : 'one of our crews'
-  return `Hey ${guestFirst || 'there'}! It's ${leaderFirst || 'a leader'} from Venture YA 👋 ` +
-    `So glad you filled out a connection card! I'd love to grab coffee or get you connected with ${where}. ` +
-    `What does your week look like?`
+// The text leaders send — prefilled in Messages, still editable before sending.
+// Each leader can save their own version (Profile tab → "Your text message",
+// stored on their PCO profile). Placeholders are filled in per guest:
+export const PLACEHOLDERS = [
+  { token: '{first}', label: "Guest's first name" },
+  { token: '{me}',    label: 'Your first name' },
+  { token: '{crew}',  label: 'Their crew, e.g. “College Life crew”' },
+]
+
+export const DEFAULT_MESSAGE =
+  "Hey {first}! It's {me} from Venture YA 👋 So glad you filled out a connection card! " +
+  "I'd love to grab coffee or get you connected with {crew}. What does your week look like?"
+
+export function renderMessage(template, { guestFirst, leaderFirst, crew }) {
+  const t = (template || '').trim() || DEFAULT_MESSAGE
+  return t
+    .replace(/\{first\}/gi, guestFirst || 'there')
+    .replace(/\{me\}/gi, leaderFirst || 'a YA leader')
+    .replace(/\{crew\}/gi, crew ? `${crew} crew` : 'one of our crews')
 }
 
 // sms: link that opens Messages with the number + body filled in.

@@ -845,3 +845,35 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
   background: #fef2f2; color: #b91c1c; font-size: 13px;
 }
 .home-error .home-link { display: inline-flex; align-items: center; gap: 4px; }
+
+/* ── Profile: personal text message ───────────────────────── */
+.home-section-head .save-indicator { font-size: 12px; }
+.profile-hint strong { color: var(--text); }
+.msg-editor {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  padding: 12px; display: flex; flex-direction: column; gap: 10px;
+}
+.msg-input {
+  width: 100%; box-sizing: border-box; resize: none; overflow: hidden; min-height: 132px;
+  field-sizing: content;   /* grows with the text where supported; JS fallback below */
+  font-family: inherit; font-size: 16px; line-height: 1.45; color: var(--text);
+  border: 1.5px solid var(--border); border-radius: 10px; padding: 10px 12px; outline: none;
+}
+.msg-input:focus { border-color: var(--primary); }
+.msg-tokens { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.msg-token {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; font-weight: 600;
+  background: var(--primary-light); color: var(--primary); border: none; border-radius: 6px;
+  padding: 4px 8px; cursor: pointer;
+}
+.msg-token:hover { background: #e0e7ff; }
+.msg-preview { background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+.msg-preview-label { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
+.msg-bubble {
+  background: #1d8cf8; color: #fff; font-size: 14px; line-height: 1.4;
+  padding: 8px 12px; border-radius: 16px 16px 4px 16px; margin-left: 24px; white-space: pre-wrap;
+}
+.msg-actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
+.msg-reset { background: none; border: none; padding: 0; cursor: pointer; font: inherit; font-size: 13px; color: var(--muted); font-weight: 600; }
+.msg-reset:hover { color: var(--text); }
+.msg-save { width: auto; padding: 10px 18px; }
