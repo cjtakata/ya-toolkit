@@ -22,6 +22,16 @@ export async function pcoFetch(path, options = {}) {
   return res.json()
 }
 
+// Body-less POST for PCO action endpoints (promote, go_back, …). PCO rejects a
+// JSON content type with an empty body, and these may answer with no JSON.
+export async function pcoAction(path) {
+  const url = path.startsWith('http') ? path : `${PCO_BASE}${path}`
+  const res = await fetch(url, { method: 'POST', headers: { Authorization: authHeader() } })
+  const text = await res.text()
+  if (!res.ok) throw new Error(`PCO ${res.status} ${url}: ${text}`)
+  try { return text ? JSON.parse(text) : null } catch { return null }
+}
+
 // Fetches all pages, collecting both data and included arrays
 export async function pcoFetchAll(path) {
   const allData     = []

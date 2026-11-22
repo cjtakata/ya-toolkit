@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import LoginScreen from './components/LoginScreen.jsx'
 import PeopleList from './components/PeopleList.jsx'
 import DetailPanel from './components/DetailPanel.jsx'
@@ -48,12 +48,12 @@ function parseHashTab() {
   return m ? m[1] : null
 }
 
-// Filter links like /people?followup=unclaimed&crew=college open the Search tab pre-filtered.
+// Filter links like /people?card=waiting&crew=college open the Search tab pre-filtered.
 function readUrlPreset() {
   const q = new URLSearchParams(window.location.search)
-  const followup = q.get('followup'), crew = q.get('crew'), status = q.get('status')
-  if (!followup && !crew && !status) return null
-  return { followup, crew, status, n: 0 }
+  const card = q.get('card'), crew = q.get('crew'), status = q.get('status')
+  if (!card && !crew && !status) return null
+  return { card, crew, status, n: 0 }
 }
 
 function AuthenticatedApp({ user, onLogout }) {
@@ -79,6 +79,48 @@ function AuthenticatedApp({ user, onLogout }) {
   function chooseCrew(key) {
     setMyCrew(key)
     localStorage.setItem('ya_my_crew', key)
+  }
+
+  // Connection-card follow-ups (PCO workflow cards) — see api/cards.js
+  const [cards, setCards]               = useState([])
+  const [cardsLoading, setCardsLoading] = useState(true)
+  const [cardsError, setCardsError]     = useState(false)
+  const [busyCard, setBusyCard]         = useState(null)
+
+  const loadCards = useCallback((fresh = false) => {
+    setCardsLoading(true)
+    return fetch('/api/cards' + (fresh ? '?fresh=1' : ''))
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => { setCards(Array.isArray(data) ? data : []); setCardsError(false) })
+      .catch(() => setCardsError(true))
+      .finally(() => setCardsLoading(false))
+  }, [])
+
+  useEffect(() => {
+    loadCards()
+    // Pick up claims from other leaders when the app comes back to the foreground
+    function onVisible() { if (document.visibilityState === 'visible') loadCards() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [loadCards])
+
+  async function handleCardAction(card, action) {
+    setBusyCard(card.cardId)
+    try {
+      const res = await fetch('/api/cards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardId: card.cardId, action }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || `Something went wrong (HTTP ${res.status})`)
+    } finally {
+      await loadCards(true)   // refresh even on a conflict, so the screen shows who has them
+      setBusyCard(null)
+    }
+  }
+  function claimFromList(card) {
+    handleCardAction(card, 'claim').catch(err => alert(err.message))
   }
 
   const [loadProgress, setLoadProgress] = useState(30)
@@ -144,12 +186,19 @@ function AuthenticatedApp({ user, onLogout }) {
     changeTab('search')
   }
 
-  const unclaimedCount = useMemo(() => {
-    const scoped = myCrew && myCrew !== 'all' ? people.filter(p => p.list === myCrew) : people
-    return scoped.filter(p => p.needsFollowup && !(p.assignedLeader || '').trim()).length
-  }, [people, myCrew])
+  // Card guests may not have a YA Status that puts them on the People list yet —
+  // fold them in so they're searchable and their profile opens.
+  const cardsByPerson = useMemo(() => Object.fromEntries(cards.map(c => [c.personId, c])), [cards])
+  const allPeople = useMemo(() => {
+    const ids = new Set(people.map(p => p.id))
+    const extra = cards.filter(c => !ids.has(c.personId)).map(c => c.person)
+    return extra.length ? [...people, ...extra].sort((a, b) => a.name.localeCompare(b.name)) : people
+  }, [people, cards])
 
-  const selectedPerson = people.find(p => p.id === selectedId) ?? null
+  const waitingCount = useMemo(() => cards.filter(c =>
+    c.state === 'waiting' && (!myCrew || myCrew === 'all' || c.person.list === myCrew)).length, [cards, myCrew])
+
+  const selectedPerson = allPeople.find(p => p.id === selectedId) ?? null
 
   async function handleSave(id, body) {
     const res = await fetch(`/api/person/${id}`, {
@@ -164,6 +213,7 @@ function AuthenticatedApp({ user, onLogout }) {
     }
     const updated = await res.json()
     setPeople(prev => prev.map(p => p.id === id ? { ...p, ...updated } : p))
+    setCards(prev => prev.map(c => c.personId === id ? { ...c, person: { ...c.person, ...updated } } : c))
     return updated
   }
 
@@ -179,6 +229,12 @@ function AuthenticatedApp({ user, onLogout }) {
       <div className="app-body">
         <div className={`tab-view${tab === 'home' ? '' : ' tab-hidden'}`}>
           <HomeTab
+            cards={cards}
+            cardsLoading={cardsLoading}
+            cardsError={cardsError}
+            onRefresh={() => loadCards(true)}
+            onClaim={claimFromList}
+            busyCard={busyCard}
             people={people}
             myCrew={myCrew}
             currentUser={currentUser}
@@ -191,7 +247,8 @@ function AuthenticatedApp({ user, onLogout }) {
         {/* Search stays mounted so filters survive switching tabs */}
         <div className={`tab-view${tab === 'search' ? '' : ' tab-hidden'}`}>
           <PeopleList
-            people={people}
+            people={allPeople}
+            cardsByPerson={cardsByPerson}
             loading={loading}
             error={error}
             statusOptions={statusOptions}
@@ -210,12 +267,14 @@ function AuthenticatedApp({ user, onLogout }) {
           crewOptions={crewOptions}
           statusOptions={statusOptions}
           currentUser={currentUser}
+          card={selectedPerson ? cardsByPerson[selectedPerson.id] || null : null}
+          onCardAction={handleCardAction}
           backLabel={tab === 'home' ? 'Home' : tab === 'search' ? 'People' : 'Back'}
           onClose={() => setSelectedId(null)}
           onSave={handleSave}
         />
       </div>
-      <TabBar tab={tab} onChange={changeTab} user={user} badge={unclaimedCount} />
+      <TabBar tab={tab} onChange={changeTab} user={user} badge={waitingCount} />
     </div>
   )
 }

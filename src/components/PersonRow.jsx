@@ -2,7 +2,7 @@ import { StickyNote } from 'lucide-react'
 import { LIST_META } from './listMeta.js'
 import { statusClass } from './statusMeta.js'
 
-export default function PersonRow({ person: p, selected, onClick, currentUser }) {
+export default function PersonRow({ person: p, card = null, selected, onClick, currentUser }) {
   const initials = p.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
   const lm = LIST_META[p.list] || { crew: p.list, badgeCls: '' }
 
@@ -10,16 +10,11 @@ export default function PersonRow({ person: p, selected, onClick, currentUser })
   const genderTag = g === 'male' ? 'M' : g === 'female' ? 'F' : null
   const hasNote = !!(p.notes && p.notes.trim())
 
-  let ownerChip = null
-  if (p.needsFollowup) {
-    if (!p.assignedLeader) {
-      ownerChip = <div className="owner-chip owner-chip-unclaimed">No owner</div>
-    } else if (p.assignedLeader === currentUser) {
-      ownerChip = <div className="owner-chip owner-chip-mine">You</div>
-    } else {
-      ownerChip = <div className="owner-chip owner-chip-theirs">{p.assignedLeader}</div>
-    }
-  }
+  // Connection-card status, if this person has an open/recent card
+  let cardChip = null
+  if (card?.state === 'waiting')   cardChip = <div className="owner-chip owner-chip-unclaimed">Not claimed</div>
+  if (card?.state === 'claimed')   cardChip = <div className={`owner-chip ${card.claimedBy === currentUser ? 'owner-chip-mine' : 'owner-chip-theirs'}`}>{card.claimedBy === currentUser ? 'Yours' : (card.claimedBy || 'Claimed').split(' ')[0]}</div>
+  if (card?.state === 'contacted') cardChip = <div className="owner-chip owner-chip-done">Texted</div>
 
   return (
     <div className={`person-row${selected ? ' selected' : ''}`} onClick={onClick}>
@@ -37,14 +32,7 @@ export default function PersonRow({ person: p, selected, onClick, currentUser })
           {genderTag && <span className="badge badge-gender">{genderTag}</span>}
         </div>
       </div>
-      <div className="person-meta-right">
-        <div
-          className={`followup-dot ${p.needsFollowup ? 'pending' : 'done'}`}
-          title={p.needsFollowup ? 'Needs follow-up' : 'No follow-up needed'}
-        />
-        <div className="followup-label">{p.needsFollowup ? 'Follow up' : ''}</div>
-        {ownerChip}
-      </div>
+      {cardChip && <div className="person-meta-right">{cardChip}</div>}
     </div>
   )
 }

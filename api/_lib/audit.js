@@ -1,11 +1,9 @@
 const FIELD_LABELS = {
   crew:          'Crew',
-  needsFollowup: 'Needs Follow-Up?',
   notes:         'YA Notes',
 }
 
 function fmtValue(key, value) {
-  if (key === 'needsFollowup') return value ? 'Yes' : 'No'
   if (key === 'notes') {
     const s = String(value || '')
     if (!s) return '(cleared)'

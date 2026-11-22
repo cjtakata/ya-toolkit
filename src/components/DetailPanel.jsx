@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Check, Link2, ChevronLeft, ExternalLink, Flag, UserCheck, User } from 'lucide-react'
+import { Check, Link2, ChevronLeft, ExternalLink, Flag, UserCheck, User, MessageCircle } from 'lucide-react'
 import { LIST_META } from './listMeta.js'
+import { timeAgo, duration, shortDate, welcomeText, smsHref } from './cardMeta.js'
 
 const CREW_FALLBACK   = ['College Life', 'Early Career', 'Young Professional']
 const STATUS_FALLBACK = ['First Time Guest', 'Active', 'Missing', 'Friend', 'Alumni', 'Moved On']
@@ -35,7 +36,7 @@ function formatNoteDate(iso) {
     : { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-export default function DetailPanel({ person, crewOptions = [], statusOptions = [], currentUser, backLabel = 'Back', onClose, onSave }) {
+export default function DetailPanel({ person, crewOptions = [], statusOptions = [], currentUser, backLabel = 'Back', card = null, onCardAction, onClose, onSave }) {
   const crewChoices   = crewOptions.length   ? crewOptions   : CREW_FALLBACK
   const statusChoices = statusOptions.length ? statusOptions : STATUS_FALLBACK
   const [draft, setDraft]       = useState(null)
@@ -48,12 +49,8 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
   const [notesLoading, setNotesLoading] = useState(false)
   const [noteText, setNoteText]       = useState('')
   const [posting, setPosting]         = useState(false)
-  const [followupText, setFollowupText]       = useState('')
-  const [loggingFollowup, setLoggingFollowup] = useState(false)
-  const [claiming, setClaiming]               = useState(false)
-  const [showOverride, setShowOverride]       = useState(false)
-  const [overrideText, setOverrideText]       = useState('')
-  const [closeStatus, setCloseStatus]         = useState('Active')
+  const [cardBusy, setCardBusy]       = useState(false)
+  const [confirmText, setConfirmText] = useState(false)   // "Did you send it?" after opening Messages
 
   const handleCopyLink = useCallback(() => {
     navigator.clipboard.writeText(window.location.href).then(() => {
@@ -67,18 +64,13 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
     setDraft({
       status:        person.status        || '',
       crew:          person.crew          || '',
-      needsFollowup: person.needsFollowup ?? false,
     })
     setSaved(false)
 
     // Load notes for this person
     setNotes([])
     setNoteText('')
-    setFollowupText('')
-    setShowOverride(false)
-    setOverrideText('')
-    const s = (person.status || '').toLowerCase()
-    setCloseStatus(s === 'first time guest' || s === 'missing' ? 'Active' : '')
+    setConfirmText(false)
     setNotesLoading(true)
     fetch(`/api/notes?personId=${person.id}`)
       .then(r => r.ok ? r.json() : Promise.reject())
@@ -111,74 +103,16 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
     }
   }
 
-  // Log a follow-up: post a note marked as a follow-up, then clear the flag.
-  async function logFollowup() {
-    const text = followupText.trim()
-    if (!text) return
-    setLoggingFollowup(true)
+  async function cardAction(action) {
+    if (!card || !onCardAction) return
+    setCardBusy(true)
     try {
-      const res = await fetch('/api/notes', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ personId: person.id, body: text, followup: true }),
-      })
-      if (!res.ok) {
-        const detail = (await res.json().catch(() => ({}))).error || `HTTP ${res.status}`
-        throw new Error(detail)
-      }
-      const note = await res.json()
-      setNotes(prev => [note, ...prev])
-      setFollowupText('')
-      await update('needsFollowup', false)
-      await setAssignedLeader('')
-      if (closeStatus) await update('status', closeStatus)
+      await onCardAction(card, action)
     } catch (err) {
-      alert(`Couldn't log follow-up:\n\n${err.message}`)
+      alert(err.message)
     } finally {
-      setLoggingFollowup(false)
-    }
-  }
-
-  async function setAssignedLeader(value) {
-    setClaiming(true)
-    try {
-      await onSave(person.id, {
-        fields:       { assignedLeader: value },
-        fieldDataIds: person._fieldDataIds || {},
-        personName:   person.name,
-      })
-    } catch (err) {
-      alert(`Couldn't update assigned leader:\n\n${err.message}`)
-    } finally {
-      setClaiming(false)
-    }
-  }
-
-  async function logFollowupOverride() {
-    const text = overrideText.trim()
-    if (!text) return
-    setLoggingFollowup(true)
-    try {
-      const res = await fetch('/api/notes', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ personId: person.id, body: text, followup: true }),
-      })
-      if (!res.ok) {
-        const detail = (await res.json().catch(() => ({}))).error || `HTTP ${res.status}`
-        throw new Error(detail)
-      }
-      const note = await res.json()
-      setNotes(prev => [note, ...prev])
-      setOverrideText('')
-      setShowOverride(false)
-      await update('needsFollowup', false)
-      await setAssignedLeader('')
-      if (closeStatus) await update('status', closeStatus)
-    } catch (err) {
-      alert(`Couldn't log follow-up:\n\n${err.message}`)
-    } finally {
-      setLoggingFollowup(false)
+      setCardBusy(false)
+      setConfirmText(false)
     }
   }
 
@@ -286,6 +220,14 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
           </div>
         </div>
 
+        {card && (
+          <CardSection
+            card={card} person={person} currentUser={currentUser} busy={cardBusy}
+            confirming={confirmText} onTextOpened={() => setConfirmText(true)}
+            onAction={cardAction} onCancelConfirm={() => setConfirmText(false)}
+          />
+        )}
+
         {/* YA Details custom fields */}
         <div>
           <div className="field-section-title" style={{ justifyContent: 'space-between' }}>
@@ -294,154 +236,6 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
               : saved ? <span className="save-indicator saved"><Check size={12} />Saved</span>
               : null}
           </div>
-
-          <div className="field-row">
-            <div>
-              <div className="field-label">Needs Follow-Up?</div>
-              <div className="field-sub">Flag this person for a follow-up conversation</div>
-            </div>
-            <button
-              className={`toggle ${draft.needsFollowup ? 'on' : 'off'}`}
-              onClick={() => update('needsFollowup', !draft.needsFollowup)}
-            />
-          </div>
-
-          {draft.needsFollowup && (() => {
-            const owner = person.assignedLeader || ''
-            const isMine = owner && owner === currentUser
-            const isTheirs = owner && owner !== currentUser
-
-            if (!owner) return (
-              <div className="fu-card">
-                <div className="fu-head">
-                  <Flag className="fu-icon" />
-                  <div>
-                    <div className="fu-title">Follow-Up</div>
-                    <div className="fu-sub">No one has claimed this yet</div>
-                  </div>
-                </div>
-                <button
-                  className="fu-log"
-                  onClick={() => setAssignedLeader(currentUser)}
-                  disabled={claiming}
-                >
-                  {claiming ? '…' : 'Claim this follow-up'}
-                </button>
-              </div>
-            )
-
-            if (isMine) return (
-              <div className="fu-card fu-card-mine">
-                <div className="fu-head">
-                  <UserCheck className="fu-icon fu-icon-mine" size={22} />
-                  <div style={{ flex: 1 }}>
-                    <div className="fu-title">Claimed by you</div>
-                    <div className="fu-sub">Jot down anything worth noting from your follow-up</div>
-                  </div>
-                  <button
-                    className="fu-btn-release"
-                    onClick={() => setAssignedLeader('')}
-                    disabled={claiming}
-                  >
-                    Release
-                  </button>
-                </div>
-                <div className="fu-compose">
-                  <textarea
-                    className="fu-textarea"
-                    rows="1"
-                    placeholder="What happened?"
-                    value={followupText}
-                    onChange={e => setFollowupText(e.target.value)}
-                    onInput={e => { e.target.style.height = '38px'; e.target.style.height = e.target.scrollHeight + 'px' }}
-                  />
-                  {closeStatus !== '' && (
-                    <div className="status-strip">
-                      <span className="status-strip-label">Mark as</span>
-                      <button
-                        className={`status-pill pill-active${closeStatus === 'Active' ? ' selected' : ''}`}
-                        onClick={() => setCloseStatus('Active')}
-                      >Active</button>
-                      <button
-                        className={`status-pill pill-removed${closeStatus === 'Removed' ? ' selected' : ''}`}
-                        onClick={() => setCloseStatus('Removed')}
-                      >Removed</button>
-                    </div>
-                  )}
-                  <button
-                    className="fu-log fu-log-mine"
-                    onClick={logFollowup}
-                    disabled={loggingFollowup || !followupText.trim()}
-                  >
-                    {loggingFollowup ? '…' : closeStatus === 'Removed' ? 'Post & mark removed' : 'Post'}
-                  </button>
-                </div>
-              </div>
-            )
-
-            // claimed by someone else
-            return (
-              <div className="fu-card fu-card-theirs">
-                <div className="fu-head">
-                  <User className="fu-icon fu-icon-theirs" size={22} />
-                  <div>
-                    <div className="fu-title">Claimed by {owner}</div>
-                    <div className="fu-sub">They're planning to reach out</div>
-                  </div>
-                </div>
-                <div className="fu-btn-row">
-                  <button
-                    className="fu-log fu-log-override"
-                    onClick={() => setShowOverride(v => !v)}
-                  >
-                    I followed up instead
-                  </button>
-                  <button
-                    className="fu-btn-takeover"
-                    onClick={() => setAssignedLeader(currentUser)}
-                    disabled={claiming}
-                  >
-                    Take over
-                  </button>
-                </div>
-                {showOverride && (
-                  <div className="fu-override">
-                    <div className="fu-compose">
-                      <textarea
-                        className="fu-textarea fu-textarea-theirs"
-                        rows="1"
-                        placeholder="What happened?"
-                        value={overrideText}
-                        onChange={e => setOverrideText(e.target.value)}
-                        onInput={e => { e.target.style.height = '38px'; e.target.style.height = e.target.scrollHeight + 'px' }}
-                      />
-                      <button
-                        className="fu-log fu-log-override-post"
-                        onClick={logFollowupOverride}
-                        disabled={loggingFollowup || !overrideText.trim()}
-                      >
-                        {loggingFollowup ? '…' : 'Post'}
-                      </button>
-                    </div>
-                    {closeStatus !== '' && (
-                      <div className="status-strip">
-                        <span className="status-strip-label">Mark as</span>
-                        <button
-                          className={`status-pill pill-active${closeStatus === 'Active' ? ' selected' : ''}`}
-                          onClick={() => setCloseStatus('Active')}
-                        >Active</button>
-                        <button
-                          className={`status-pill pill-removed${closeStatus === 'Removed' ? ' selected' : ''}`}
-                          onClick={() => setCloseStatus('Removed')}
-                        >Removed</button>
-                      </div>
-                    )}
-                    <div className="fu-override-hint">This will close the follow-up and credit you.</div>
-                  </div>
-                )}
-              </div>
-            )
-          })()}
 
           <div className="field-stack-wrap">
             <div className="field-stack">
@@ -529,6 +323,97 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
               ))}
             </div>
           )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
+// ── Connection card: claimed? texted? ──────────────────────────────
+function CardSection({ card, person, currentUser, busy, confirming, onTextOpened, onAction, onCancelConfirm }) {
+  const mine     = card.claimedBy && card.claimedBy === currentUser
+  const first    = person.name.split(' ')[0]
+  const crewName = (person.crew || '').trim()
+  const body     = welcomeText({ guestFirst: first, leaderFirst: (currentUser || '').split(' ')[0], crew: crewName })
+  const submitted = `Card ${shortDate(card.submittedAt)} · ${timeAgo(card.submittedAt)}`
+
+  const textButton = person.phone ? (
+    <a className="fu-log fu-log-mine fu-text-btn" href={smsHref(person.phone, body)} onClick={onTextOpened}>
+      <MessageCircle size={16} /> Text {first}
+    </a>
+  ) : (
+    <div className="fu-sub">No phone number on file. Reached them another way?
+      <button className="fu-inline-link" onClick={() => onAction('texted')} disabled={busy}>Mark as contacted</button>
+    </div>
+  )
+
+  if (confirming) return (
+    <div className="fu-card fu-card-mine">
+      <div className="fu-head">
+        <MessageCircle className="fu-icon fu-icon-mine" size={22} />
+        <div>
+          <div className="fu-title">Did you send the text to {first}?</div>
+          <div className="fu-sub">We'll mark {first} as contacted. Only the time is saved, not your message.</div>
+        </div>
+      </div>
+      <div className="fu-btn-row">
+        <button className="fu-log fu-log-mine" onClick={() => onAction('texted')} disabled={busy}>
+          {busy ? '…' : 'Yes, I sent it'}
+        </button>
+        <button className="fu-btn-release" onClick={onCancelConfirm} disabled={busy}>Not yet</button>
+      </div>
+    </div>
+  )
+
+  if (card.state === 'contacted') return (
+    <div className="fu-card fu-card-done">
+      <div className="fu-head">
+        <Check className="fu-icon fu-icon-done" size={22} strokeWidth={3} />
+        <div>
+          <div className="fu-title">Texted by {card.contactedBy === currentUser ? 'you' : card.contactedBy || 'a leader'}</div>
+          <div className="fu-sub">{shortDate(card.contactedAt)} · {duration(card.submittedAt, card.contactedAt)} after their connection card</div>
+        </div>
+      </div>
+    </div>
+  )
+
+  if (card.state === 'waiting') return (
+    <div className="fu-card">
+      <div className="fu-head">
+        <Flag className="fu-icon" />
+        <div>
+          <div className="fu-title">New connection card</div>
+          <div className="fu-sub">{submitted} · not claimed yet</div>
+        </div>
+      </div>
+      <button className="fu-log" onClick={() => onAction('claim')} disabled={busy}>
+        {busy ? '…' : `Claim ${first}`}
+      </button>
+    </div>
+  )
+
+  if (mine) return (
+    <div className="fu-card fu-card-mine">
+      <div className="fu-head">
+        <UserCheck className="fu-icon fu-icon-mine" size={22} />
+        <div style={{ flex: 1 }}>
+          <div className="fu-title">Claimed by you</div>
+          <div className="fu-sub">{timeAgo(card.claimedAt)} · {submitted}</div>
+        </div>
+        <button className="fu-btn-release" onClick={() => onAction('release')} disabled={busy}>Release</button>
+      </div>
+      {textButton}
+    </div>
+  )
+
+  return (
+    <div className="fu-card fu-card-theirs">
+      <div className="fu-head">
+        <User className="fu-icon fu-icon-theirs" size={22} />
+        <div>
+          <div className="fu-title">Claimed by {card.claimedBy || 'another leader'}</div>
+          <div className="fu-sub">{timeAgo(card.claimedAt)} · they're planning to text {first}</div>
         </div>
       </div>
     </div>

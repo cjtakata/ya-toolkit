@@ -4,10 +4,8 @@ import { logEdit } from '../_lib/audit.js'
 
 const FIELD_ENV_MAP = {
   crew:            'PCO_FIELD_CREW',
-  needsFollowup:   'PCO_FIELD_NEEDS_FOLLOWUP',
   notes:           'PCO_FIELD_NOTES',
   status:          'PCO_FIELD_STATUS',
-  assignedLeader:  'PCO_FIELD_ASSIGNED_LEADER',
 }
 
 // Hardcoded allowlist: the PCO field-definition ID each writable key resolves
@@ -15,10 +13,8 @@ const FIELD_ENV_MAP = {
 // redirect a write to a different field on the profile.
 const EXPECTED_FIELD_IDS = {
   crew:            '431524',
-  needsFollowup:   '1065427',
   notes:           '1065428',
   status:          '1065431',
-  assignedLeader:  '1067887',
 }
 
 // Select-type fields whose submitted value must match a live PCO option.
@@ -99,7 +95,7 @@ export default async function handler(req, res) {
         })
       }
 
-      const rawValue   = key === 'needsFollowup' ? String(!!fields[key]) : String(fields[key] ?? '')
+      const rawValue   = String(fields[key] ?? '')
       const existingId = fieldDataIds?.[key]
 
       if (existingId) {

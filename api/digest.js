@@ -1,4 +1,6 @@
-import { pcoFetch, pcoFetchAll } from './_lib/pco.js'
+import { getFieldDefinitions } from './_lib/pco.js'
+import { normalizePerson, fetchPeopleByIds } from './_lib/person.js'
+import { listCards } from './_lib/cards.js'
 
 // Crew → its Discord channel + embed color
 const CREWS = {
@@ -7,19 +9,7 @@ const CREWS = {
   youngpro:    { channel: '1510875026570875030', label: 'Young Professional',  color: 0xf59e0b },
 }
 
-const FOLLOWUP_DEF = '1065427'  // Needs Follow-Up? (boolean)
-const STATUS_DEF   = '1065431'  // YA Status (select)
-const CREW_DEF     = '431524'   // Crew (select)
-const ACTIVE_STATUSES = new Set(['Active', 'Missing', 'TBD', 'Leader', 'First Time Guest'])
 const APP_URL = 'https://ya-toolkit.vercel.app'
-
-function crewToKey(v) {
-  const s = (v || '').trim().toLowerCase()
-  if (s === 'college life') return 'college'
-  if (s === 'early career') return 'earlycareer'
-  if (s === 'young professional' || s === 'young professionals') return 'youngpro'
-  return null
-}
 
 function daysSince(iso) {
   if (!iso) return 0
@@ -69,99 +59,62 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Find everyone flagged Needs Follow-Up = true, and when they were flagged.
-    const { data: fuData } = await pcoFetchAll(
-      `/people/v2/field_data?where%5Bfield_definition_id%5D=${FOLLOWUP_DEF}&per_page=100`
-    )
-    const flaggedAt = {}
-    for (const d of fuData) {
-      const v = (d.attributes?.value || '').toLowerCase()
-      if (v === 'true' || v === 'yes') {
-        const pid = d.relationships?.customizable?.data?.id
-        if (pid) flaggedAt[pid] = d.attributes?.updated_at || d.attributes?.created_at
-      }
-    }
-    const ids = Object.keys(flaggedAt)
+    // Connection-card follow-ups from the PCO workflow (the source of record).
+    const cards = (await listCards()).filter(c => c.personId && (c.state === 'waiting' || c.state === 'claimed'))
 
-    // 2. Fetch those people (name + status + crew + contact) in one batched call.
-    const byCrew = { college: [], earlycareer: [], youngpro: [] }
-    if (ids.length) {
-      const BATCH = 50
-      const people = [], included = []
-      for (let i = 0; i < ids.length; i += BATCH) {
-        const idList = ids.slice(i, i + BATCH).join(',')
-        const page = await pcoFetchAll(
-          `/people/v2/people?where%5Bid%5D=${idList}&include=emails,phone_numbers,field_data&per_page=100`
-        )
-        people.push(...page.data); included.push(...page.included)
-      }
+    // Guest name / crew / phone, batched.
+    const ids = [...new Set(cards.map(c => c.personId))]
+    const fieldDefs = await getFieldDefinitions()
+    const { data, included } = ids.length ? await fetchPeopleByIds(ids) : { data: [], included: [] }
+    const people = Object.fromEntries(data.map(p => [p.id, normalizePerson(p, included, fieldDefs)]))
 
-      for (const p of people) {
-        const pid = p.id
-        // status + crew from this person's included field_data
-        let status = '', crewVal = ''
-        for (const inc of included) {
-          if (inc.type !== 'FieldDatum') continue
-          if (inc.relationships?.customizable?.data?.id !== pid) continue
-          const def = inc.relationships?.field_definition?.data?.id
-          if (def === STATUS_DEF) status = inc.attributes?.value || ''
-          if (def === CREW_DEF)   crewVal = inc.attributes?.value || ''
-        }
-        if (!ACTIVE_STATUSES.has(status)) continue
-        const crewKey = crewToKey(crewVal)
-        if (!crewKey) continue
-
-        const email = included.find(i => i.type === 'Email' && i.relationships?.person?.data?.id === pid && i.attributes?.primary)?.attributes?.address
-          || included.find(i => i.type === 'Email' && i.relationships?.person?.data?.id === pid)?.attributes?.address
-        const phone = included.find(i => i.type === 'PhoneNumber' && i.relationships?.person?.data?.id === pid && i.attributes?.primary)?.attributes?.number
-          || included.find(i => i.type === 'PhoneNumber' && i.relationships?.person?.data?.id === pid)?.attributes?.number
-
-        byCrew[crewKey].push({
-          id: pid,
-          name: [p.attributes?.first_name, p.attributes?.last_name].filter(Boolean).join(' ') || 'Unknown',
-          days: daysSince(flaggedAt[pid]),
-          ftg: status === 'First Time Guest',
-          contact: [email, formatPhone(phone)].filter(Boolean).join(' · '),
-        })
-      }
+    const byCrew = { college: { waiting: [], claimed: [] }, earlycareer: { waiting: [], claimed: [] }, youngpro: { waiting: [], claimed: [] } }
+    let noCrew = 0
+    for (const c of cards) {
+      const p = people[c.personId]
+      if (!p) continue
+      if (!byCrew[p.list]) { noCrew++; continue }
+      byCrew[p.list][c.state].push({
+        id: p.id, name: p.name, phone: formatPhone(p.phone),
+        days: daysSince(c.state === 'waiting' ? c.submittedAt : c.claimedAt),
+        claimedBy: c.claimedBy,
+      })
     }
 
-    // 3. Build + post one embed per crew.
     const results = {}
     for (const [key, crew] of Object.entries(CREWS)) {
-      const list = (byCrew[key] || []).sort((a, b) => b.days - a.days)
+      const waiting = byCrew[key].waiting.sort((a, b) => b.days - a.days)
+      const claimed = byCrew[key].claimed.sort((a, b) => b.days - a.days)
+      const ago = d => d === 0 ? 'today' : `${d} day${d === 1 ? '' : 's'}`
+      const link = p => `**[${p.name}](${APP_URL}/people#/person/${p.id})**`
 
       let embed
-      if (list.length === 0) {
+      if (waiting.length === 0 && claimed.length === 0) {
         embed = {
           color: 0x23a55a,
           title: `🎉 All caught up — ${crew.label}`,
-          description: "Nobody's waiting on a follow-up right now. Great work, team!",
-          footer: { text: 'YA Toolkit · weekly follow-up' },
+          description: 'Every connection card has been claimed and texted. Great work, team!',
+          footer: { text: 'YA Toolkit · weekly connection cards' },
         }
       } else {
-        const lines = list.map(p => {
-          const link = `${APP_URL}/people#/person/${p.id}`
-          const flags = `${p.ftg ? '🆕 ' : ''}${p.days >= 7 ? '⚠️ ' : ''}`
-          const wait  = p.days === 0 ? 'today' : `${p.days} day${p.days === 1 ? '' : 's'}`
-          const tail  = p.ftg ? ` · *First Time Guest*` : ''
-          const c     = p.contact ? `\n${p.contact}` : ''
-          return `${flags}**[${p.name}](${link})** · ${wait}${tail}${c}`
-        })
+        const parts = []
+        if (waiting.length) parts.push(
+          `**🙋 Not claimed (${waiting.length})** — open one and tap **Claim**:\n` +
+          waiting.map(p => `${p.days >= 2 ? '⚠️ ' : ''}${link(p)} · card ${ago(p.days)}`).join('\n'))
+        if (claimed.length) parts.push(
+          `**💬 Claimed, not texted yet (${claimed.length})**:\n` +
+          claimed.map(p => `${p.days >= 3 ? '⚠️ ' : ''}${link(p)} · ${p.claimedBy || 'a leader'} · claimed ${ago(p.days)}`).join('\n'))
         embed = {
           color: crew.color,
-          title: `📋 Weekly Follow-Up — ${crew.label}`,
-          description:
-            `**${list.length} ${list.length === 1 ? 'person' : 'people'}** still need a follow-up (oldest first):\n\n`
-            + lines.join('\n\n')
-            + `\n\nReach out, then open their profile and tap **Log Follow-Up** to clear it. 🙌`,
-          footer: { text: 'YA Toolkit · weekly follow-up' },
+          title: `📋 Connection Cards — ${crew.label}`,
+          description: parts.join('\n\n') + '\n\nTap a name to open them in the YA Toolkit. 🙌',
+          footer: { text: 'YA Toolkit · weekly connection cards' },
         }
       }
       results[key] = dryRun ? embed : (await postEmbed(crew.channel, embed) ? 'posted' : 'failed')
     }
 
-    return res.json({ ok: true, dryRun, flaggedCount: ids.length, results })
+    return res.json({ ok: true, dryRun, openCards: cards.length, noCrew, results })
 
   } catch (err) {
     console.error('digest error:', err)

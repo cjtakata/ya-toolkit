@@ -432,11 +432,6 @@ svg.lucide { vertical-align: middle; }
 .person-meta-right {
   display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0;
 }
-.followup-dot { width: 8px; height: 8px; border-radius: 50%; }
-.followup-dot.done    { background: var(--success); }
-.followup-dot.pending { background: var(--warning); }
-.followup-dot.none    { background: var(--border); }
-.followup-label { font-size: 10px; color: var(--muted); }
 
 /* ── Detail pane ──────────────────────────────────────────── */
 .detail-pane {
@@ -817,3 +812,36 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
 
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ── Connection cards (PCO workflow) ──────────────────────── */
+.owner-chip-done { background: #d1fae5; color: #047857; }
+.card-line { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.card-line.warn { color: #b45309; font-weight: 600; }
+.card-row .person-name-row { gap: 6px; flex-wrap: wrap; }
+.row-claim {
+  flex-shrink: 0; border: none; border-radius: 99px; cursor: pointer; font-family: inherit;
+  background: var(--warning); color: #fff; font-size: 12px; font-weight: 700; padding: 6px 14px;
+}
+.row-claim:hover:not(:disabled) { background: #d97706; }
+.row-claim:disabled { opacity: .5; cursor: default; }
+
+.fu-card-done { background: #ecfdf5; border: 1.5px solid #a7f3d0; }
+.fu-card-done .fu-title { color: #065f46; }
+.fu-card-done .fu-sub   { color: #047857; opacity: 1; }
+.fu-icon-done { color: #059669; flex-shrink: 0; }
+.fu-text-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  text-decoration: none; font-size: 15px; padding: 12px; box-sizing: border-box;
+}
+.fu-inline-link {
+  background: none; border: none; padding: 0 0 0 6px; cursor: pointer; font: inherit;
+  color: var(--primary); font-weight: 600;
+}
+
+.stat-green { color: #047857; }
+.home-error {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  margin-top: 14px; padding: 12px 14px; border-radius: 12px;
+  background: #fef2f2; color: #b91c1c; font-size: 13px;
+}
+.home-error .home-link { display: inline-flex; align-items: center; gap: 4px; }

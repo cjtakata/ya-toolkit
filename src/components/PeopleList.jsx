@@ -7,13 +7,13 @@ const LIST_OPTIONS = CREW_OPTIONS
 
 export default function PeopleList({
   people, loading, error, statusOptions = [],
-  myCrew = 'all', preset = null, selectedId, onSelect, currentUser,
+  myCrew = 'all', preset = null, cardsByPerson = {}, selectedId, onSelect, currentUser,
 }) {
   const hasCrew = myCrew && myCrew !== 'all'
 
   const [list, setList]         = useState(() => myCrew || 'all')
   const [gender, setGender]     = useState('all')
-  const [followup, setFollowup] = useState('all')
+  const [cardF, setCardF]       = useState('all')   // connection-card filter
   const [status, setStatus]     = useState('all')
   const [search, setSearch]     = useState('')
   const [sort, setSort]         = useState('name')
@@ -29,22 +29,22 @@ export default function PeopleList({
   // replaces the current filters; crew defaults to the leader's crew.
   useEffect(() => {
     if (!preset) return
-    const fu = ['needs', 'unclaimed', 'none'].includes(preset.followup) ? preset.followup : 'all'
+    const cf = ['any', 'waiting', 'claimed', 'contacted'].includes(preset.card) ? preset.card : 'all'
     const crew = preset.crew && (preset.crew === 'all' || CREW_LABEL[preset.crew]) ? preset.crew : (myCrew || 'all')
-    setList(crew); setFollowup(fu); setStatus(preset.status || 'all'); setGender('all'); setSearch('')
+    setList(crew); setCardF(cf); setStatus(preset.status || 'all'); setGender('all'); setSearch('')
   }, [preset]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const myCrewStats = useMemo(() => {
     if (!hasCrew) return null
     const mine = people.filter(p => p.list === myCrew)
-    return { total: mine.length, needs: mine.filter(p => p.needsFollowup).length }
-  }, [people, myCrew, hasCrew])
+    return { total: mine.length, waiting: mine.filter(p => cardsByPerson[p.id]?.state === 'waiting').length }
+  }, [people, myCrew, hasCrew, cardsByPerson])
 
   function focusMyCrew() {
-    setList(myCrew); setGender('all'); setFollowup('all'); setStatus('all'); setSearch('')
+    setList(myCrew); setGender('all'); setCardF('all'); setStatus('all'); setSearch('')
   }
   function focusFollowup() {
-    setList(myCrew); setFollowup('needs'); setSearch('')
+    setList(myCrew); setCardF('waiting'); setSearch('')
   }
 
   const counts = useMemo(() => ({
@@ -58,20 +58,18 @@ export default function PeopleList({
     let rows = people.filter(p => {
       if (list !== 'all' && p.list !== list) return false
       if (gender !== 'all' && (p.gender || '').toLowerCase() !== gender) return false
-      if (followup === 'needs' && !p.needsFollowup) return false
-      if (followup === 'unclaimed' && (!p.needsFollowup || (p.assignedLeader || '').trim())) return false
-      if (followup === 'none'  &&  p.needsFollowup) return false
+      const c = cardsByPerson[p.id]
+      if (cardF === 'any' && !c) return false
+      if (['waiting', 'claimed', 'contacted'].includes(cardF) && c?.state !== cardF) return false
       if (status !== 'all' && p.status !== status) return false
       if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false
       return true
     })
     if (sort === 'name')     rows = [...rows].sort((a, b) => a.name.localeCompare(b.name))
-    if (sort === 'followup') rows = [...rows].sort((a, b) => {
-      if (a.needsFollowup === b.needsFollowup) return a.name.localeCompare(b.name)
-      return a.needsFollowup ? -1 : 1
-    })
+    if (sort === 'card') rows = [...rows].sort((a, b) =>
+      (cardsByPerson[b.id]?.submittedAt || '').localeCompare(cardsByPerson[a.id]?.submittedAt || '') || a.name.localeCompare(b.name))
     return rows
-  }, [people, list, gender, followup, status, search, sort])
+  }, [people, list, gender, cardF, status, search, sort, cardsByPerson])
 
   return (
     <div className="people-pane">
@@ -87,9 +85,9 @@ export default function PeopleList({
           </div>
           <div className="mycrew-actions">
             <button onClick={focusMyCrew}>View my crew</button>
-            {myCrewStats.needs > 0 && (
+            {myCrewStats.waiting > 0 && (
               <button className="mycrew-followup" onClick={focusFollowup}>
-                <TriangleAlert size={13} /> {myCrewStats.needs} need follow-up
+                <TriangleAlert size={13} /> {myCrewStats.waiting} not claimed
               </button>
             )}
           </div>
@@ -118,11 +116,12 @@ export default function PeopleList({
             <option value="male">Male</option>
             <option value="female">Female</option>
           </select>
-          <select className="filter-select" value={followup} onChange={e => setFollowup(e.target.value)}>
-            <option value="all">Any follow-up</option>
-            <option value="needs">Needs follow-up</option>
-            <option value="unclaimed">Unclaimed follow-up</option>
-            <option value="none">No follow-up</option>
+          <select className="filter-select" value={cardF} onChange={e => setCardF(e.target.value)}>
+            <option value="all">Any card status</option>
+            <option value="any">Has a connection card</option>
+            <option value="waiting">Card · not claimed</option>
+            <option value="claimed">Card · claimed, not texted</option>
+            <option value="contacted">Card · texted</option>
           </select>
           {statusOptions.length > 0 && (
             <select className="filter-select" value={status} onChange={e => setStatus(e.target.value)}>
@@ -139,7 +138,7 @@ export default function PeopleList({
         <span><strong>{visible.length}</strong> people</span>
         <select className="sort-select" value={sort} onChange={e => setSort(e.target.value)}>
           <option value="name">Sort: Name</option>
-          <option value="followup">Sort: Needs follow-up first</option>
+          <option value="card">Sort: Newest connection card</option>
         </select>
       </div>
 
@@ -153,6 +152,7 @@ export default function PeopleList({
           <PersonRow
             key={p.id}
             person={p}
+            card={cardsByPerson[p.id] || null}
             selected={p.id === selectedId}
             onClick={() => onSelect(p.id)}
             currentUser={currentUser}
