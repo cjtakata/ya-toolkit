@@ -330,7 +330,7 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
         />
         </Sheet>
       )}
-      <Sheet open={profileOpen} title="Profile" onClose={() => setProfileOpen(false)}>
+      <Sheet open={profileOpen} title="Profile" showTitle={false} onClose={() => setProfileOpen(false)}>
         <ProfileTab user={user} myCrew={myCrew} onChooseCrew={chooseCrew} onLogout={handleLogout}
           onSaveMessage={saveTextMessage} />
       </Sheet>

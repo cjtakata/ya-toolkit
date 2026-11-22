@@ -7,12 +7,13 @@ import { useEffect, useRef, useState } from 'react'
 //
 //   title    – header title; pass null for a headless sheet (its content brings
 //              its own top row — mark it with data-sheet-handle to make it draggable)
+//   showTitle – false keeps just the Done button (the title is still read by screen readers)
 //   tall     – open at full sheet height (for content that loads in, like a profile)
 const CLOSE_DISTANCE = 0.35   // drag at least 35% of the sheet's height…
 const FLICK_SPEED    = 0.9    // …or flick at least this fast (px per ms)…
 const FLICK_MIN      = 70     // …and at least this far, so a small bump never closes it
 
-export default function Sheet({ open, title = null, tall = false, onClose, children }) {
+export default function Sheet({ open, title = null, showTitle = true, tall = false, onClose, children }) {
   const [mounted, setMounted] = useState(open)
   const [shown, setShown]     = useState(false)
   const sheetRef   = useRef(null)
@@ -155,8 +156,8 @@ export default function Sheet({ open, title = null, tall = false, onClose, child
       <div className={`sheet${tall ? ' sheet-tall' : ''}`} ref={sheetRef} role="dialog" aria-modal="true" aria-label={title || undefined}>
         <div className="sheet-handle" aria-hidden="true"><div className="sheet-grabber" /></div>
         {title !== null && (
-          <div className="sheet-head">
-            <span className="sheet-title">{title}</span>
+          <div className={`sheet-head${showTitle ? '' : ' sheet-head-plain'}`}>
+            {showTitle && <span className="sheet-title">{title}</span>}
             <button className="sheet-done" onClick={onClose}>Done</button>
           </div>
         )}

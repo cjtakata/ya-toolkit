@@ -260,6 +260,7 @@ svg.lucide { vertical-align: middle; }
 .sheet-grabber { width: 36px; height: 5px; border-radius: 3px; background: rgba(118,118,128,.35); margin: 0 auto; }
 .sheet-handle > .sheet-grabber { margin: 8px auto 6px; }
 .sheet-head { display: flex; align-items: center; justify-content: center; position: relative; padding: 8px 16px 10px; flex-shrink: 0; }
+.sheet-head-plain { justify-content: flex-end; min-height: 40px; }
 .sheet-title { font-size: var(--fs-headline); font-weight: var(--fw-semibold); }
 .sheet-done {
   position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
