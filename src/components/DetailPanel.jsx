@@ -364,7 +364,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
 
           {quietNow && (
             <label className="mention-quiet">
-              <span>Quiet hours (9pm–8am): mention texts go out at 8am.</span>
+              <span>Quiet hours (9pm–8am): mention notifications go out at 8am.</span>
               <span className="mention-quiet-toggle">
                 <input type="checkbox" checked={sendNow} onChange={e => setSendNow(e.target.checked)} />
                 Send now
