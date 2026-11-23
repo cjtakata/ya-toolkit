@@ -55,6 +55,17 @@ export const MINISTRY = {
     { key: 'youngpro',    label: 'Young Professional', badge: 'badge-youngpro', also: ['Young Professionals'] },
   ],
 
+  // ── Texting leaders (Clearstream) ──────────────────────────────────────
+  // The API key is secret and lives in Vercel (CLEARSTREAM_API_KEY), not here.
+  texting: {
+    from: '+14254751237',          // the YA line texts are sent from
+    mentionHeader: 'YA Mention',   // shown in front of the text: "YA Mention: ..."
+    maxRecipients: 25,             // per note
+    // Mentions written in these hours are held until morning, unless the
+    // writer ticks "Send now".
+    quietHours: { from: 21, until: 8, timeZone: 'America/Los_Angeles' },
+  },
+
   // The text a leader sends a new guest unless they've saved their own.
   // {first} guest's first name · {me} leader's first name · {crew} "College Life crew"
   defaultTextMessage:

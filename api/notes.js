@@ -4,6 +4,9 @@ import { personHistory } from './_lib/cards.js'
 import { checkMentions, notifyMentions } from './_lib/mentions.js'
 import { MINISTRY } from '../ministry.config.js'
 
+// Texting up to 25 leaders one by one can take a few seconds.
+export const config = { maxDuration: 30 }
+
 const CATEGORY_NAME = MINISTRY.pco.noteCategory
 const NOTE_MAX = 10000
 
@@ -98,7 +101,7 @@ export default async function handler(req, res) {
 
       const n = created.data
 
-      // @mentions → text the leaders (via the Zapier "YA Mention" workflow).
+      // @mentions → text the leaders (Clearstream directly, or the Zapier "YA Mention" workflow).
       // The note is already saved; a failed notification only gets logged.
       const tagged = await checkMentions(text, mentions, user.id).catch(err => {
         console.error('mention check failed:', err.message)
@@ -114,6 +117,7 @@ export default async function handler(req, res) {
           leaderIds:  tagged.leaders.map(l => l.id),
           crews:      tagged.crews.map(c => c.key),
           urgent:     urgent === true,   // "Send now": skip quiet hours (9pm–8am Pacific)
+          quote:      text,              // what the leaders' text quotes (the note minus "[Author]")
         })
         notified = { ...r, leaders: tagged.leaders.map(l => l.name), crews: tagged.crews.map(c => c.label) }
       }
