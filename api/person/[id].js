@@ -1,6 +1,5 @@
 import { requireAuth } from '../_lib/auth.js'
 import { pcoFetch, getFieldDefinitions, getFieldOptions } from '../_lib/pco.js'
-import { logEdit } from '../_lib/audit.js'
 
 const FIELD_ENV_MAP = {
   crew:            'PCO_FIELD_CREW',
@@ -36,7 +35,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { fields, fieldDataIds, personName } = req.body || {}
+    const { fields, fieldDataIds } = req.body || {}
 
     if (!fields || typeof fields !== 'object' || Array.isArray(fields)) {
       return res.status(400).json({ error: 'Missing fields' })
@@ -128,15 +127,6 @@ export default async function handler(req, res) {
         updatedDataIds[key] = created.data.id
       }
     }
-
-    // Audit log (no-op if no webhook configured). Awaited so it fires
-    // before the serverless function suspends.
-    await logEdit({
-      actor:      user.global_name || user.username,
-      personId:   id,
-      personName,
-      changes:    written,
-    })
 
     res.json({ id, ...written, _fieldDataIds: updatedDataIds })
   } catch (err) {

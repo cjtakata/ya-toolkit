@@ -6,12 +6,6 @@
       "destination": "/people/index.html"
     }
   ],
-  "crons": [
-    {
-      "path": "/api/digest",
-      "schedule": "0 15 * * 1"
-    }
-  ],
   "redirects": [
     {
       "source": "/p/:id(\\d+)",
