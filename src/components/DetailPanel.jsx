@@ -327,7 +327,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
             <textarea
               ref={noteRef}
               className="note-compose-input"
-              placeholder="Add a note… type @ to text a leader or crew"
+              placeholder="Add a note…"
               value={noteText}
               onChange={onNoteChange}
               onKeyDown={onNoteKeyDown}
