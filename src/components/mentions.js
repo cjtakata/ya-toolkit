@@ -64,3 +64,12 @@ export function splitMentions(body, targets) {
   if (last < body.length) out.push({ text: body.slice(last) })
   return out
 }
+
+// Quiet hours for mention texts: 9pm–8am Pacific. Texts written then are held
+// until 8am unless the writer ticks "Send now" (the Zapier workflow does the holding).
+export const QUIET_FROM = 21
+export const QUIET_UNTIL = 8
+export function inQuietHours(date = new Date()) {
+  const h = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hourCycle: 'h23' }).format(date))
+  return h >= QUIET_FROM || h < QUIET_UNTIL
+}

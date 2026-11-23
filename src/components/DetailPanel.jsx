@@ -4,7 +4,7 @@ import { LIST_META } from './listMeta.js'
 import PickerRow from './PickerRow.jsx'
 import Avatar from './Avatar.jsx'
 import { timeAgo, duration, shortDate, renderMessage, smsHref } from './cardMeta.js'
-import { mentionTargets, activeQuery, matchTargets, mentionsInText, splitMentions } from './mentions.js'
+import { mentionTargets, activeQuery, matchTargets, mentionsInText, splitMentions, inQuietHours } from './mentions.js'
 
 const CREW_FALLBACK   = ['College Life', 'Early Career', 'Young Professional']
 const STATUS_FALLBACK = ['First Time Guest', 'Active', 'Missing', 'Friend', 'Alumni', 'Moved On']
@@ -61,8 +61,11 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
   const [mq, setMq]                   = useState(null)
   const [mIndex, setMIndex]           = useState(0)
   const [notice, setNotice]           = useState('')
+  const [sendNow, setSendNow]         = useState(false)   // skip quiet hours for this note's mention texts
   const targets = useMemo(() => mentionTargets(leaders), [leaders])
   const suggestions = mq ? matchTargets(targets, mq.query) : []
+  const draftMentions = mentionsInText(noteText, picked)
+  const quietNow = draftMentions.length > 0 && inQuietHours()
   // After inserting a mention, put the caret right after it before the next keystroke
   useLayoutEffect(() => {
     const el = noteRef.current
@@ -121,7 +124,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
       const res = await fetch('/api/notes', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ personId: person.id, body: text, mentions: mentionsInText(text, picked) }),
+        body:    JSON.stringify({ personId: person.id, body: text, mentions: mentionsInText(text, picked), urgent: quietNow && sendNow }),
       })
       if (!res.ok) {
         const detail = (await res.json().catch(() => ({}))).error || `HTTP ${res.status}`
@@ -129,12 +132,15 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
       }
       const note = await res.json()
       setNotes(prev => [note, ...prev])
+      const held = quietNow && !sendNow
       setNoteText('')
       setPicked([])
       setMq(null)
+      setSendNow(false)
       const who = [...(note.notified?.leaders || []), ...(note.notified?.crews || []).map(c => `${c} leaders`)]
       if (who.length) {
-        setNotice(note.notified.sent ? `Texting ${listJoin(who)}` : `Note saved, but the text to ${listJoin(who)} didn't go out`)
+        setNotice(!note.notified.sent ? `Note saved, but the text to ${listJoin(who)} didn't go out`
+          : held ? `Texting ${listJoin(who)} at 8am (quiet hours)` : `Texting ${listJoin(who)}`)
         setTimeout(() => setNotice(''), 5000)
       }
     } catch (err) {
@@ -356,6 +362,15 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
             </button>
           </div>
 
+          {quietNow && (
+            <label className="mention-quiet">
+              <span>Quiet hours (9pm–8am): mention texts go out at 8am.</span>
+              <span className="mention-quiet-toggle">
+                <input type="checkbox" checked={sendNow} onChange={e => setSendNow(e.target.checked)} />
+                Send now
+              </span>
+            </label>
+          )}
           {notice && <div className="mention-notice">{notice}</div>}
 
           {notesLoading ? (

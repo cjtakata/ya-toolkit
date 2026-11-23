@@ -69,7 +69,7 @@ export default async function handler(req, res) {
 
     // ── Create a note on a person ─────────────────────────────
     if (req.method === 'POST') {
-      const { personId, body, followup, mentions } = req.body || {}
+      const { personId, body, followup, mentions, urgent } = req.body || {}
       if (!/^\d+$/.test(String(personId))) {
         return res.status(400).json({ error: 'Invalid person id' })
       }
@@ -112,6 +112,7 @@ export default async function handler(req, res) {
           authorName: author,
           leaderIds:  tagged.leaders.map(l => l.id),
           crews:      tagged.crews.map(c => c.key),
+          urgent:     urgent === true,   // "Send now": skip quiet hours (9pm–8am Pacific)
         })
         notified = { ...r, leaders: tagged.leaders.map(l => l.name), crews: tagged.crews.map(c => c.label) }
       }
