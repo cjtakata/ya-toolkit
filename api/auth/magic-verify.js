@@ -10,7 +10,7 @@ function hashCode(code) {
 }
 function sessionFrom(payload) {
   return createSessionCookie({
-    auth:        'pco',           // requireAuth rejects older Discord sessions
+    auth:        'pco',           // requireAuth rejects any other session type
     id:          payload.pcoId,
     username:    payload.email,
     global_name: payload.name,

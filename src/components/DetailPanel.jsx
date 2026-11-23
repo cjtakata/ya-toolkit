@@ -153,7 +153,6 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
       await onSave(person.id, {
         fields:       { [field]: value },
         fieldDataIds: person._fieldDataIds || {},
-        personName:   person.name,
       })
       setSaving(false)
       setSaved(true)
