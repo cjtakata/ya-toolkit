@@ -1,14 +1,13 @@
 // Loading and shaping people for /api/people and /api/cards.
 import { pcoFetchAll, FIELD } from './pco.js'
+import { MINISTRY } from '../../ministry.config.js'
 
 // Crew field value → the key the app uses. Normalized because PCO's stored
 // values can carry stray whitespace (the "College Life " option has a trailing space).
+const norm = s => (s || '').trim().toLowerCase()
+const CREW_BY_VALUE = new Map(MINISTRY.crews.flatMap(c => [c.label, ...c.also].map(v => [norm(v), c.key])))
 export function crewToList(value) {
-  const v = (value || '').trim().toLowerCase()
-  if (v === 'college life') return 'college'
-  if (v === 'early career') return 'earlycareer'
-  if (v === 'young professional' || v === 'young professionals') return 'youngpro'
-  return 'unassigned'
+  return CREW_BY_VALUE.get(norm(value)) || 'unassigned'
 }
 
 const GENDER = { M: 'Male', F: 'Female' }
@@ -67,7 +66,7 @@ export async function peopleById(ids) {
 // Everyone on the YA list: one of these YA Statuses. Archived people are
 // included; the People list hides them unless its filter asks. (Older values
 // still stored in PCO, e.g. "Missing", stay off the list.)
-const YA_STATUSES = new Set(['Active', 'Serving', 'Leader', 'Archived'])
+const YA_STATUSES = new Set(MINISTRY.statuses.all)
 export async function loadYaPeople() {
   const { data } = await pcoFetchAll(`/people/v2/field_data?where%5Bfield_definition_id%5D=${FIELD.status}&per_page=100`)
   const ids = [...new Set(data.filter(d => YA_STATUSES.has(d.attributes.value)).map(d => d.relationships.customizable.data.id))]

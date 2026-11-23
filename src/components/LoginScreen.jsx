@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { MINISTRY } from '../../ministry.config.js'
 
 const LOGO = <img src="/ya.svg" alt="YA" />
 
@@ -66,7 +67,7 @@ export default function LoginScreen() {
         <div className="login-logo">{LOGO}</div>
         <div>
           <div className="login-title">YA Toolkit</div>
-          <div className="login-tagline">For Venture Young Adults leaders</div>
+          <div className="login-tagline">For {MINISTRY.name} leaders</div>
         </div>
 
         {step === 'email' ? (

@@ -4,12 +4,9 @@
 // "YA Mention" workflow, which re-reads the note from PCO and texts the leaders.
 import { pcoFetch } from './pco.js'
 import { isLeaderPerson } from './auth.js'
+import { MINISTRY } from '../../ministry.config.js'
 
-export const CREWS = {
-  college:     'College Life',
-  earlycareer: 'Early Career',
-  youngpro:    'Young Professional',
-}
+export const CREWS = Object.fromEntries(MINISTRY.crews.map(c => [c.key, c.label]))
 export const MAX_MENTIONS = 5
 
 async function leaderName(id) {

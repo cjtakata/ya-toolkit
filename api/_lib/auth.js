@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify, EncryptJWT, jwtDecrypt } from 'jose'
 import { createHash, createHmac } from 'node:crypto'
 import { getDatum, FIELD } from './pco.js'
+import { MINISTRY } from '../../ministry.config.js'
 
 const COOKIE = 'ya_session'
 
@@ -43,7 +44,7 @@ export const clearSessionCookie = () => cookie('', 0)
 
 // ── Who's a leader ──────────────────────────────────────────────
 // YA Status = "Leader" in PCO is the whole access rule.
-const leaderNow = async id => (await getDatum(id, FIELD.status))?.attributes?.value === 'Leader'
+const leaderNow = async id => (await getDatum(id, FIELD.status))?.attributes?.value === MINISTRY.statuses.leader
 
 // Re-checked every few minutes, so removing someone's Leader status ends their
 // access within LEADER_TTL, not when their 30-day session runs out. If PCO
@@ -76,9 +77,9 @@ export async function isLeaderPerson(id) {
 // ── Admins ──────────────────────────────────────────────────────
 // Can assign guests to leaders, remove guests from follow-up, and grant or
 // remove Leader status. PCO person ids in YA_ADMIN_PCO_IDS (comma-separated);
-// until that's set, Connor (83780614) is the only admin.
+// until that's set, MINISTRY.defaultAdminIds (ministry.config.js).
 export function isAdmin(user) {
-  const ids = String(process.env.YA_ADMIN_PCO_IDS || '83780614').split(',').map(s => s.trim())
+  const ids = String(process.env.YA_ADMIN_PCO_IDS || MINISTRY.defaultAdminIds.join(',')).split(',').map(s => s.trim())
   return !!user && ids.includes(String(user.id))
 }
 

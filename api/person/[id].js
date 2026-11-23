@@ -1,5 +1,6 @@
 import { requireAuth, isAdmin } from '../_lib/auth.js'
 import { getDatum, setDatum, getFieldOptions, FIELD } from '../_lib/pco.js'
+import { MINISTRY } from '../../ministry.config.js'
 
 // PATCH /api/person/:id { fields: { crew?, status? } } → saves YA Details to PCO.
 //
@@ -32,7 +33,8 @@ export default async function handler(req, res) {
 
     if (keys.includes('status')) {
       const current = (await getDatum(id, FIELD.status))?.attributes?.value || ''
-      const touchesLeader = (current === 'Leader') !== (fields.status === 'Leader')
+      const LEADER = MINISTRY.statuses.leader
+      const touchesLeader = (current === LEADER) !== (fields.status === LEADER)
       if (touchesLeader && !isAdmin(user)) {
         return res.status(403).json({ error: 'Only YA admins can make someone a Leader or remove Leader status.' })
       }

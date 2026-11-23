@@ -1,4 +1,5 @@
 // Helpers for connection-card follow-ups (PCO workflow cards; see api/_lib/cards.js).
+import { MINISTRY } from '../../ministry.config.js'
 
 export function timeAgo(iso) {
   if (!iso) return ''
@@ -35,18 +36,16 @@ export function hoursSince(iso) {
 export const PLACEHOLDERS = [
   { token: '{first}', label: "Guest's first name" },
   { token: '{me}',    label: 'Your first name' },
-  { token: '{crew}',  label: 'Their crew, e.g. “College Life crew”' },
+  { token: '{crew}',  label: `Their crew, e.g. “${MINISTRY.crews[0].label} crew”` },
 ]
 
-export const DEFAULT_MESSAGE =
-  "Hey {first}! It's {me} from Venture YA 👋 So glad you filled out a connection card! " +
-  "I'd love to grab coffee or get you connected with {crew}. What does your week look like?"
+export const DEFAULT_MESSAGE = MINISTRY.defaultTextMessage
 
 export function renderMessage(template, { guestFirst, leaderFirst, crew }) {
   const t = (template || '').trim() || DEFAULT_MESSAGE
   return t
     .replace(/\{first\}/gi, guestFirst || 'there')
-    .replace(/\{me\}/gi, leaderFirst || 'a YA leader')
+    .replace(/\{me\}/gi, leaderFirst || `a ${MINISTRY.leaderNoun}`)
     .replace(/\{crew\}/gi, crew ? `${crew} crew` : 'one of our crews')
 }
 

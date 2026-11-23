@@ -4,6 +4,7 @@ import { Search, SlidersHorizontal, X, Check } from 'lucide-react'
 import PersonRow from './PersonRow.jsx'
 import Sheet from './Sheet.jsx'
 import { CREW_OPTIONS, CREW_LABEL } from './listMeta.js'
+import { MINISTRY } from '../../ministry.config.js'
 
 const CARD_OPTIONS = [
   { key: 'all',       label: 'Any' },
@@ -63,10 +64,10 @@ export default function PeopleList({
   }, [preset]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Archived people stay out of sight unless the YA Status filter asks for them
-  const isArchived = p => p.status === 'Archived'
+  const isArchived = p => p.status === MINISTRY.statuses.archived
   const current = useMemo(() => people.filter(p => !isArchived(p)), [people])
   const counts = useMemo(() => {
-    const pool = status === 'Archived' ? people.filter(isArchived) : current
+    const pool = status === MINISTRY.statuses.archived ? people.filter(isArchived) : current
     return {
       all:         pool.length,
       college:     pool.filter(p => p.list === 'college').length,
