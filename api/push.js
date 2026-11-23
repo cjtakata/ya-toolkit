@@ -1,8 +1,8 @@
 import { requireAuth } from './_lib/auth.js'
-import { pushReady, cleanSubscription, addDevice, removeDevice, devicesFor, pushTo } from './_lib/push.js'
+import { pushReady, cleanSubscription, addDevice, removeDevice, devicesFor, pushTo, badgeContext } from './_lib/push.js'
 
 // GET  /api/push                                  → { enabled, publicKey, devices }
-// POST /api/push { action: 'subscribe', subscription, label }
+// POST /api/push { action: 'subscribe', subscription, label, crew }   (also re-sent when the crew choice changes)
 // POST /api/push { action: 'unsubscribe', endpoint }
 // POST /api/push { action: 'test' }               → a test notification to your own devices
 // Every action only touches the signed-in leader's own devices.
@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     if (action === 'subscribe') {
       const sub = cleanSubscription(req.body?.subscription)
       if (!sub) return res.status(400).json({ error: "That device couldn't be registered." })
-      await addDevice(me, sub, req.body?.label)
+      await addDevice(me, sub, req.body?.label, req.body?.crew)
       return res.json({ ok: true })
     }
     if (action === 'unsubscribe') {
@@ -33,7 +33,9 @@ export default async function handler(req, res) {
     }
     if (action === 'test') {
       const first = (user.global_name || '').split(' ')[0]
+      const countFor = await badgeContext().catch(() => null)
       const reached = await pushTo(me, {
+        badgeFor: countFor ? d => countFor(user.global_name, d.crew) : undefined,
         title: 'Notifications are on',
         body: `${first ? `${first}, you'll` : "You'll"} get a notification here when someone @mentions you.`,
         url: '/people', tag: 'test',

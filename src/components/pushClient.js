@@ -54,7 +54,7 @@ const post = body => fetch('/api/push', {
 })
 
 // Must run from a tap (iOS only shows the permission prompt after one).
-export async function turnOn(publicKey) {
+export async function turnOn(publicKey, crew) {
   const permission = await Notification.requestPermission()
   if (permission !== 'granted') throw new Error(permission === 'denied'
     ? 'Notifications are blocked for this app. Turn them on in your phone’s Settings → Notifications.'
@@ -63,8 +63,23 @@ export async function turnOn(publicKey) {
   await navigator.serviceWorker.ready
   const sub = await reg.pushManager.getSubscription()
     || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(publicKey) })
-  await post({ action: 'subscribe', subscription: sub.toJSON(), label: deviceLabel() })
+  await post({ action: 'subscribe', subscription: sub.toJSON(), label: deviceLabel(), crew })
   return sub
+}
+
+// The crew choice decides this device's badge number; tell the server when it
+// changes (only if notifications are on here).
+export async function syncDeviceCrew(crew) {
+  const sub = await currentSubscription().catch(() => null)
+  if (sub) await post({ action: 'subscribe', subscription: sub.toJSON(), label: deviceLabel(), crew }).catch(() => {})
+}
+
+// The number on the app icon (iPhone home-screen app, installed desktop apps).
+export function setIconBadge(n) {
+  try {
+    if (!('setAppBadge' in navigator)) return
+    ;(n > 0 ? navigator.setAppBadge(n) : navigator.clearAppBadge()).catch(() => {})
+  } catch { /* unsupported */ }
 }
 
 export async function turnOff() {

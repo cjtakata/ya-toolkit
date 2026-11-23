@@ -14,6 +14,8 @@ import CrewCoverage from './components/CrewCoverage.jsx'
 import { MINISTRY } from '../ministry.config.js'
 import InstallPage from './components/InstallPage.jsx'
 import { INSTALL_PATH, isStandalone } from './components/install.js'
+import { badgeCount } from './components/badgeCount.js'
+import { setIconBadge, syncDeviceCrew } from './components/pushClient.js'
 
 function LoadingScreen({ label, progress }) {
   return (
@@ -262,6 +264,18 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
 
   const waitingCount = useMemo(() => currentCards.filter(c =>
     c.state === 'waiting' && inCrew(c, myCrew)).length, [currentCards, myCrew])
+
+  // App-icon badge: guests waiting on me (same rule the server uses in pushes).
+  useEffect(() => {
+    if (cardsLoading || cardsError) return
+    setIconBadge(badgeCount(currentCards, { crew: myCrew, me: currentUser }))
+  }, [currentCards, myCrew, currentUser, cardsLoading, cardsError])
+  // Keep this device's crew (for badges sent with pushes) in step with the picker.
+  const firstCrew = useRef(true)
+  useEffect(() => {
+    if (firstCrew.current) { firstCrew.current = false; return }
+    syncDeviceCrew(myCrew)
+  }, [myCrew])
 
   const selectedPerson = allPeople.find(p => p.id === selectedId) ?? null
   // YA Leaders: anyone can @mention them in notes; admins also assign guests to them

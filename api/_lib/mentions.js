@@ -6,7 +6,7 @@
 import { pcoFetch } from './pco.js'
 import { isLeaderPerson } from './auth.js'
 import { clearstreamReady, inQuietHours, loadLeaders, recipients, mentionText, sendText } from './texting.js'
-import { pushReady, pushToMany } from './push.js'
+import { pushReady, pushTo, badgeContext } from './push.js'
 import { MINISTRY } from '../../ministry.config.js'
 
 export const CREWS = Object.fromEntries(MINISTRY.crews.map(c => [c.key, c.label]))
@@ -102,14 +102,17 @@ async function pushMentions({ noteId, personId, authorId, authorName, leaderIds,
     if (!groups.has(via)) groups.set(via, [])
     groups.get(via).push(id)
   }
-  let reached = 0
-  for (const [via, ids] of groups) {
-    const r = await pushToMany(ids, {
+  const countFor = await badgeContext().catch(err => { console.error('badge count failed:', err.message); return null })
+  const sends = []
+  for (const [via, ids] of groups) for (const id of ids) {
+    const name = leaders.find(l => l.id === id)?.name
+    sends.push(pushTo(id, {
       title: `${author} mentioned ${via}`, body,
       url: `/people#/person/${personId}`, tag: `mention-${noteId}`,
-    })
-    reached += r.leaders
+      badgeFor: countFor && name ? d => countFor(name, d.crew) : undefined,
+    }).catch(err => { console.error('push to', id, 'failed:', err.message); return 0 }))
   }
+  const reached = (await Promise.all(sends)).filter(n => n > 0).length
   return { leaders: reached }
 }
 

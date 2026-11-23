@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { UserRoundSearch, Hand, Clock, MessageCircleHeart, PartyPopper, RefreshCw } from 'lucide-react'
 import CardRow from './CardRow.jsx'
 import InstallBanner from './InstallBanner.jsx'
+import { inCrew } from './badgeCount.js'
 import { CREW_LABEL } from './listMeta.js'
 
 const PREVIEW = 6
@@ -13,9 +14,7 @@ function greeting() {
   return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
 }
 
-// A guest belongs to the chosen crew if it's theirs or they have no crew yet.
-export const inCrew = (c, myCrew) =>
-  !myCrew || myCrew === 'all' || c.person.list === myCrew || c.person.list === 'unassigned'
+export { inCrew }
 
 const byOldest = key => (a, b) => (a[key] || '').localeCompare(b[key] || '')
 const byNewest = key => (a, b) => (b[key] || '').localeCompare(a[key] || '')

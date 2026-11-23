@@ -10,6 +10,10 @@
 //   BLOB_READ_WRITE_TOKEN                 set by connecting the Blob store
 import * as webpush from 'web-push'
 import { put, get } from '@vercel/blob'
+import { listCards } from './cards.js'
+import { peopleById } from './person.js'
+import { badgeCount } from '../../src/components/badgeCount.js'
+import { MINISTRY } from '../../ministry.config.js'
 
 const MAX_DEVICES = 10
 
@@ -50,9 +54,13 @@ export function cleanSubscription(s) {
   return { endpoint, keys: { p256dh, auth } }
 }
 
-export async function addDevice(pcoId, subscription, label = '') {
+// The crew this device's Home focuses on (for its badge number).
+const CREW_KEYS = new Set(['all', ...MINISTRY.crews.map(c => c.key)])
+export const cleanCrew = c => (CREW_KEYS.has(String(c)) ? String(c) : 'all')
+
+export async function addDevice(pcoId, subscription, label = '', crew = 'all') {
   const devices = (await devicesFor(pcoId)).filter(d => d.endpoint !== subscription.endpoint)
-  devices.unshift({ ...subscription, label: String(label).slice(0, 80), addedAt: new Date().toISOString() })
+  devices.unshift({ ...subscription, label: String(label).slice(0, 80), crew: cleanCrew(crew), addedAt: new Date().toISOString() })
   await saveDevices(pcoId, devices.slice(0, MAX_DEVICES))
 }
 
@@ -79,14 +87,19 @@ export async function pushTo(pcoId, note) {
   configure()
   const devices = await devicesFor(pcoId)
   if (!devices.length) return 0
-  const payload = JSON.stringify({
-    title: note.title, body: note.body || '', url: note.url || '/people', tag: note.tag || undefined,
-  })
+  // Each device gets its own badge number (its crew choice can differ).
+  const payloadFor = d => {
+    const badge = note.badgeFor ? note.badgeFor(d) : undefined
+    return JSON.stringify({
+      title: note.title, body: note.body || '', url: note.url || '/people', tag: note.tag || undefined,
+      ...(Number.isInteger(badge) ? { badge } : {}),
+    })
+  }
   let reached = 0
   const gone = []
   await Promise.all(devices.map(async d => {
     try {
-      await _send({ endpoint: d.endpoint, keys: d.keys }, payload, { TTL: 60 * 60 * 24, urgency: 'high' })
+      await _send({ endpoint: d.endpoint, keys: d.keys }, payloadFor(d), { TTL: 60 * 60 * 24, urgency: 'high' })
       reached++
     } catch (err) {
       if (err?.statusCode === 404 || err?.statusCode === 410) gone.push(d.endpoint)
@@ -106,4 +119,15 @@ export async function pushToMany(pcoIds, note) {
     console.error('push to', id, 'failed:', err.message); return 0
   })))
   return { leaders: counts.filter(n => n > 0).length, devices: counts.reduce((a, b) => a + b, 0) }
+}
+
+// ── App-icon badge ──────────────────────────────────────────────────────
+// Loads the open follow-up cards once (with each guest's crew) and returns
+// (leaderName, crew) → the same number Home shows that leader.
+export async function badgeContext() {
+  const cards = (await listCards()).filter(c => c.state === 'waiting' || c.state === 'claimed')
+  const ids = [...new Set(cards.filter(c => c.state === 'waiting').map(c => c.personId).filter(Boolean))]
+  const people = ids.length ? await peopleById(ids) : {}
+  const withCrew = cards.map(c => ({ ...c, person: { list: people[c.personId]?.list || 'unassigned' } }))
+  return (me, crew) => badgeCount(withCrew, { me, crew })
 }
