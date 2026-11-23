@@ -11,10 +11,12 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.12.0",
+    "@vercel/blob": "^2.9.0",
     "jose": "^5.9.6",
     "lucide-react": "^0.544.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "web-push": "^4.0.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",

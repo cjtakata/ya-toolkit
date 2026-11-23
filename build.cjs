@@ -9,7 +9,7 @@ function copy(src, dest) {
 }
 
 // Icons & manifest at dist root (manifest.json is linked as /manifest.json)
-;['icon-192.png','icon-512.png','apple-touch-icon.png','ya.svg','manifest.json'].forEach(f => {
+;['icon-192.png','icon-512.png','apple-touch-icon.png','ya.svg','manifest.json','sw.js'].forEach(f => {
   const src = path.join('public', f)
   if (fs.existsSync(src)) {
     copy(src, path.join('dist', f))
