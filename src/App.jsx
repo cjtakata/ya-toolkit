@@ -10,6 +10,7 @@ import HomeTab, { inCrew } from './components/HomeTab.jsx'
 import ProfileTab from './components/ProfileTab.jsx'
 import HelpGuide from './components/HelpGuide.jsx'
 import TeamStats from './components/TeamStats.jsx'
+import CrewCoverage from './components/CrewCoverage.jsx'
 
 function LoadingScreen({ label, progress }) {
   return (
@@ -50,7 +51,7 @@ function parseHashId() {
   return m ? m[1] : null
 }
 function parseHashTab() {
-  const m = window.location.hash.match(/^#\/(home|search|profile|help|team)$/)
+  const m = window.location.hash.match(/^#\/(home|search|profile|help|team|crews)$/)
   return m ? m[1] : null
 }
 
@@ -72,11 +73,12 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
   const [preset, setPreset]           = useState(readUrlPreset)
   const [tab, setTab]                 = useState(() => {
     const t = parseHashTab()
-    return TABS.includes(t) ? t : (readUrlPreset() ? 'search' : 'home')   // #/profile, #/help and #/team open over Home
+    return TABS.includes(t) ? t : (readUrlPreset() ? 'search' : 'home')   // #/profile, #/help, #/team and #/crews open over Home
   })
   const [profileOpen, setProfileOpen] = useState(() => parseHashTab() === 'profile')
   const [helpOpen, setHelpOpen]       = useState(() => parseHashTab() === 'help')
   const [teamOpen, setTeamOpen]       = useState(() => parseHashTab() === 'team')
+  const [crewsOpen, setCrewsOpen]     = useState(() => parseHashTab() === 'crews')
   const currentUser = user.global_name || user.username || 'Leader'
 
   // The page itself never scrolls while signed in (see html.app-shell in index.css)
@@ -190,12 +192,12 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
   // it); switching tabs just replaces the hash. Query-string filters are dropped
   // once applied so a reload doesn't re-apply them.
   useEffect(() => {
-    const newHash = selectedId ? `#/person/${selectedId}` : helpOpen ? '#/help' : teamOpen ? '#/team' : profileOpen ? '#/profile' : `#/${tab}`
+    const newHash = selectedId ? `#/person/${selectedId}` : helpOpen ? '#/help' : teamOpen ? '#/team' : crewsOpen ? '#/crews' : profileOpen ? '#/profile' : `#/${tab}`
     if (window.location.hash === newHash && !window.location.search) return
     const url = window.location.pathname + newHash
     if (selectedId && parseHashId() !== selectedId) history.pushState(null, '', url)
     else history.replaceState(null, '', url)
-  }, [selectedId, tab, profileOpen, helpOpen, teamOpen])
+  }, [selectedId, tab, profileOpen, helpOpen, teamOpen, crewsOpen])
 
   // Handle browser back/forward
   useEffect(() => {
@@ -205,6 +207,7 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
       setProfileOpen(t === 'profile')
       setHelpOpen(t === 'help')
       setTeamOpen(t === 'team')
+      setCrewsOpen(t === 'crews')
       if (TABS.includes(t)) setTab(t)
     }
     window.addEventListener('popstate', onPop)
@@ -363,7 +366,8 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
       )}
       <Sheet open={profileOpen} title="Profile" showTitle={false} onClose={() => setProfileOpen(false)}>
         <ProfileTab onOpenHelp={() => { setProfileOpen(false); setHelpOpen(true) }}
-          onOpenTeam={user.isAdmin ? () => { setProfileOpen(false); setTeamOpen(true) } : null} user={user} myCrew={myCrew} onChooseCrew={chooseCrew} onLogout={handleLogout}
+          onOpenTeam={user.isAdmin ? () => { setProfileOpen(false); setTeamOpen(true) } : null}
+          onOpenCrews={user.isAdmin ? () => { setProfileOpen(false); setCrewsOpen(true) } : null} user={user} myCrew={myCrew} onChooseCrew={chooseCrew} onLogout={handleLogout}
           onSaveMessage={textMessage => saveProfile({ textMessage })} onSaveProfile={saveProfile} />
       </Sheet>
       <Sheet open={helpOpen} title="How it works" tall onClose={() => setHelpOpen(false)}>
@@ -372,6 +376,11 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
       {user.isAdmin && (
         <Sheet open={teamOpen} title="Leader reach-outs" tall onClose={() => setTeamOpen(false)}>
           {teamOpen && <TeamStats leaders={people.filter(p => p.status === 'Leader')} />}
+        </Sheet>
+      )}
+      {user.isAdmin && (
+        <Sheet open={crewsOpen} title="Crew leaders" tall onClose={() => setCrewsOpen(false)}>
+          {crewsOpen && <CrewCoverage people={people} cards={currentCards} loading={loading} />}
         </Sheet>
       )}
     </div>
