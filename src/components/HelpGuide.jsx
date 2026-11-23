@@ -209,7 +209,7 @@ export default function HelpGuide({ isAdmin = false }) {
       <section className="home-section">
         <div className="home-section-head"><h2>Good to know</h2></div>
         <ul className="help-card help-list">
-          <li><b>Notifications:</b> in Profile, tap <b>Turn on notifications</b> to get a notification on your phone when someone @mentions you or your crew. On iPhone this works from the home-screen app (see below).</li>
+          <li><b>Notifications:</b> in Profile, tap <b>Turn on notifications</b> to get a notification on your phone when someone @mentions you or your crew. The app icon also shows a number: guests in your crew not claimed yet, plus guests you've claimed but not texted. On iPhone this works from the home-screen app (see below).</li>
           <li><b>Put it on your home screen:</b> in Safari, tap <Share size={13} /> Share, then <b>Add to Home Screen</b>. It opens like an app and stays signed in for 30 days.</li>
           <li><b>Your profile</b> (your initials, top right): add a photo and nickname, pick your crew (Home and People focus on it), and edit the text message you send guests.</li>
           <li><b>People tab:</b> the full YA list, with search and filters. Archived people are hidden unless you filter for them.</li>

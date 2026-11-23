@@ -66,7 +66,7 @@ export default function ProfileTab({ onOpenHelp, onOpenTeam, onOpenCrews, user, 
 
         <MessageEditor user={user} myCrew={myCrew} onSave={onSaveMessage} />
 
-        <NotificationsSection />
+        <NotificationsSection myCrew={myCrew} />
 
         {onOpenHelp && (
           <section className="home-section">
@@ -285,7 +285,7 @@ function NicknameRow({ user, onSave }) {
 }
 
 // Push notifications for @mentions, per device.
-function NotificationsSection() {
+function NotificationsSection({ myCrew }) {
   const [server, setServer] = useState(null)        // { enabled, publicKey } from /api/push
   const [on, setOn]         = useState(false)       // this device is subscribed
   const [busy, setBusy]     = useState(false)
@@ -318,8 +318,8 @@ function NotificationsSection() {
     body = <p className="notif-text">Notifications are blocked for this app. Turn them on in your phone's <b>Settings → Notifications → YA Toolkit</b>, then come back here.</p>
   } else if (!on) {
     body = <>
-      <p className="notif-text">Get a notification on this device when someone @mentions you or your crew.</p>
-      <button className="notif-go" disabled={busy} onClick={() => run(() => turnOn(server.publicKey), () => { setOn(true); setMsg('Notifications are on for this device.') })}>
+      <p className="notif-text">Get a notification on this device when someone @mentions you or your crew. The app icon also shows how many guests are waiting on you.</p>
+      <button className="notif-go" disabled={busy} onClick={() => run(() => turnOn(server.publicKey, myCrew || 'all'), () => { setOn(true); setMsg('Notifications are on for this device.') })}>
         <Bell size={16} /> {busy ? 'Turning on…' : 'Turn on notifications'}
       </button>
     </>
