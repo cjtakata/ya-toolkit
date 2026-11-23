@@ -11,6 +11,7 @@ import ProfileTab from './components/ProfileTab.jsx'
 import HelpGuide from './components/HelpGuide.jsx'
 import TeamStats from './components/TeamStats.jsx'
 import CrewCoverage from './components/CrewCoverage.jsx'
+import { MINISTRY } from '../ministry.config.js'
 
 function LoadingScreen({ label, progress }) {
   return (
@@ -253,7 +254,7 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
   const selectedPerson = allPeople.find(p => p.id === selectedId) ?? null
   // YA Leaders: anyone can @mention them in notes; admins also assign guests to them
   const leaders = useMemo(
-    () => people.filter(p => p.status === 'Leader').map(p => ({ id: p.id, name: p.name, crewLabel: LIST_META[p.list]?.crew })),
+    () => people.filter(p => p.status === MINISTRY.statuses.leader).map(p => ({ id: p.id, name: p.name, crewLabel: LIST_META[p.list]?.crew })),
     [people],
   )
 
@@ -375,7 +376,7 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
       </Sheet>
       {user.isAdmin && (
         <Sheet open={teamOpen} title="Leader reach-outs" tall onClose={() => setTeamOpen(false)}>
-          {teamOpen && <TeamStats leaders={people.filter(p => p.status === 'Leader')} />}
+          {teamOpen && <TeamStats leaders={people.filter(p => p.status === MINISTRY.statuses.leader)} />}
         </Sheet>
       )}
       {user.isAdmin && (

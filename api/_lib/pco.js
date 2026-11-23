@@ -1,14 +1,11 @@
 // Planning Center API client + the custom-field ids this app reads and writes.
 const PCO_BASE = 'https://api.planningcenteronline.com'
 
-// Custom fields on the YA Details tab (ids are fixed in PCO; writes are only
-// ever allowed to these).
-export const FIELD = {
-  crew:        '431524',    // Crew (select)
-  status:      '1065431',   // YA Status (select): Active, Serving, Leader, Archived
-  textMessage: '1151583',   // YA Text Message (a leader's own greeting template)
-  nickname:    '1151595',   // YA Nickname (app-only)
-}
+import { MINISTRY } from '../../ministry.config.js'
+
+// Custom fields the app reads (writes are only ever allowed to these).
+// Ids live in ministry.config.js.
+export const FIELD = MINISTRY.pco.fields
 
 export function authHeader() {
   return 'Basic ' + Buffer.from(`${process.env.PCO_APP_ID}:${process.env.PCO_SECRET}`).toString('base64')

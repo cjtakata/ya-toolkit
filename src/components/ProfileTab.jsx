@@ -4,6 +4,7 @@ import PickerRow from './PickerRow.jsx'
 import { initialsOf } from './Avatar.jsx'
 import { CREW_OPTIONS, CREW_LABEL } from './listMeta.js'
 import { DEFAULT_MESSAGE, PLACEHOLDERS, renderMessage } from './cardMeta.js'
+import { MINISTRY } from '../../ministry.config.js'
 
 // Profile: who's signed in, which crew the app focuses on, and sign out.
 export default function ProfileTab({ onOpenHelp, onOpenTeam, onOpenCrews, user, myCrew = 'all', onChooseCrew, onLogout, onSaveMessage, onSaveProfile }) {
@@ -124,7 +125,7 @@ function MessageEditor({ user, myCrew, onSave }) {
 
   const dirty     = text.trim() !== (saved || DEFAULT_MESSAGE).trim()
   const isDefault = text.trim() === DEFAULT_MESSAGE
-  const crew      = myCrew && myCrew !== 'all' ? CREW_LABEL[myCrew] : 'College Life'
+  const crew      = myCrew && myCrew !== 'all' ? CREW_LABEL[myCrew] : MINISTRY.crews[0].label
   const preview   = renderMessage(text, {
     guestFirst: 'Levi', leaderFirst: (user.global_name || '').split(' ')[0], crew,
   })

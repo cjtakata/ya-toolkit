@@ -6,9 +6,11 @@ import PickerRow from './PickerRow.jsx'
 import Avatar, { initialsOf } from './Avatar.jsx'
 import { timeAgo, duration, shortDate, renderMessage, smsHref } from './cardMeta.js'
 import { mentionTargets, activeQuery, matchTargets, mentionsInText, splitMentions, inQuietHours } from './mentions.js'
+import { MINISTRY } from '../../ministry.config.js'
 
-const CREW_FALLBACK   = ['College Life', 'Early Career', 'Young Professional']
-const STATUS_FALLBACK = ['Active', 'Serving', 'Leader', 'Archived']
+const CREW_FALLBACK   = MINISTRY.crews.map(c => c.label)
+const STATUS_FALLBACK = MINISTRY.statuses.all
+const LEADER          = MINISTRY.statuses.leader
 
 // Format a US 10-digit number as (xxx)xxx-xxxx; leave anything else as-is.
 function formatPhone(raw) {
@@ -315,8 +317,8 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
           <div className="picker-group">
             {/* Leader status grants access to this app, so only admins can give or remove it */}
             <PickerRow label="YA Status" value={draft.status}
-              options={isAdmin ? statusChoices : statusChoices.filter(s => s !== 'Leader')}
-              disabled={!isAdmin && draft.status === 'Leader'} note="Admins only"
+              options={isAdmin ? statusChoices : statusChoices.filter(s => s !== LEADER)}
+              disabled={!isAdmin && draft.status === LEADER} note="Admins only"
               emptyLabel="Not set" onChange={v => update('status', v)} />
             <PickerRow label="Crew" value={draft.crew} options={crewChoices}
               emptyLabel="Not assigned" onChange={v => update('crew', v)} />

@@ -2,8 +2,9 @@ import { requireAuth } from './_lib/auth.js'
 import { pcoFetch } from './_lib/pco.js'
 import { personHistory } from './_lib/cards.js'
 import { checkMentions, notifyMentions } from './_lib/mentions.js'
+import { MINISTRY } from '../ministry.config.js'
 
-const CATEGORY_NAME = 'Young Adults'
+const CATEGORY_NAME = MINISTRY.pco.noteCategory
 const NOTE_MAX = 10000
 
 // Resolve the "Young Adults" note category ID by name, cached briefly.

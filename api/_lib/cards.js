@@ -13,10 +13,11 @@
 // <Admin>)", so everything that reads claims treats it exactly like one) and
 // remove a guest's card from the workflow.
 import { pcoFetch, pcoFetchAll, pcoAction } from './pco.js'
+import { MINISTRY } from '../../ministry.config.js'
 
-export const WORKFLOW_ID  = '806472'
-export const STEP_WAITING = '2247268'   // Waiting for Claim
-export const STEP_REACH   = '2247270'   // Reach Out
+export const WORKFLOW_ID  = MINISTRY.pco.workflow.id
+export const STEP_WAITING = MINISTRY.pco.workflow.stepWaiting   // Waiting for Claim
+export const STEP_REACH   = MINISTRY.pco.workflow.stepReachOut  // Reach Out
 const RECENT_DAYS = 30                   // how far back completed cards are listed
 
 const cardPath = id => `/people/v2/workflows/${WORKFLOW_ID}/cards/${id}`

@@ -4,6 +4,7 @@ import { loadYaPeople } from './_lib/person.js'
 import { listCards } from './_lib/cards.js'
 import { crewStats } from '../src/components/crewStats.js'
 import { teamStats } from '../src/components/teamStats.js'
+import { MINISTRY } from '../ministry.config.js'
 
 // POST /api/insights → admins: a few AI suggestions on crew leader coverage.
 //
@@ -18,10 +19,12 @@ const MODEL = 'claude-opus-5-5'
 const CACHE_MS = 10 * 60_000          // one answer per 10 minutes unless asked fresh
 let _cache = null, _cacheAt = 0
 
-const SYSTEM = `You help the admin of Venture Young Adults, a church young-adult ministry, keep its crew leaders from being overloaded.
+const crewNames = MINISTRY.crews.map(c => c.label)
+const crewCount = ['zero', 'one', 'two', 'three', 'four', 'five', 'six'][crewNames.length] ?? crewNames.length
+const SYSTEM = `You help the admin of ${MINISTRY.name}, a church young-adult ministry, keep its crew leaders from being overloaded.
 
 How the ministry works:
-- People belong to one of three crews by life stage: College Life, Early Career, Young Professional.
+- People belong to one of ${crewCount} crews by life stage: ${crewNames.join(', ')}.
 - Crew leaders lead people of their own gender: guy leaders care for the guys, girl leaders for the girls.
 - When a guest fills out a connection card, a leader claims them and texts them. "Open follow-ups" are guests not texted yet.
 
@@ -40,7 +43,7 @@ function summarize(people, cards) {
   const byId = Object.fromEntries(people.map(p => [p.id, p]))
   const withPerson = cards.map(c => ({ ...c, person: byId[c.personId] || { list: 'unassigned' } }))
   const crews = crewStats(people, withPerson)
-  const leaders = people.filter(p => p.status === 'Leader')
+  const leaders = people.filter(p => p.status === MINISTRY.statuses.leader)
   const team = teamStats(cards, leaders.map(p => p.name), 30)
   const reach = [...team.active.map(x => ({ leader: x.name, texted: x.texted, typicalHoursCardToText: x.medianHrs == null ? null : Math.round(x.medianHrs), claimedNotTexted: x.open })),
                  ...team.quiet.map(name => ({ leader: name, texted: 0, claimedNotTexted: 0 }))]

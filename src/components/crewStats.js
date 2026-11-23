@@ -1,13 +1,14 @@
 // Crew coverage for admins: leaders vs. people, by crew and gender.
 // people: /api/people rows { name, status, list, gender }; cards: current follow-up cards.
 import { LIST_META } from './listMeta.js'
+import { MINISTRY } from '../../ministry.config.js'
 
 export const CREWS = [...Object.keys(LIST_META), 'unassigned']
 export const crewName = key => LIST_META[key]?.crew || 'No crew yet'
 
 // People a crew's leaders look after: YA Status Active or Serving (Archived and
 // Leaders themselves aren't counted).
-const MEMBER = new Set(['Active', 'Serving'])
+const MEMBER = new Set(MINISTRY.statuses.members)
 const sex = g => (g === 'Male' ? 'guys' : g === 'Female' ? 'girls' : 'unknown')
 
 export function crewStats(people = [], cards = []) {
@@ -16,7 +17,7 @@ export function crewStats(people = [], cards = []) {
   const crewOf = p => (by[p.list] ? p.list : 'unassigned')
 
   for (const p of people) {
-    if (p.status === 'Leader') by[crewOf(p)].leaders[sex(p.gender)].push(p.name)
+    if (p.status === MINISTRY.statuses.leader) by[crewOf(p)].leaders[sex(p.gender)].push(p.name)
     else if (MEMBER.has(p.status)) by[crewOf(p)].members[sex(p.gender)].push(p.name)
   }
   for (const c of cards) {
