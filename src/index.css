@@ -201,8 +201,9 @@ svg.lucide { vertical-align: middle; }
 /* ── Top bar: YA mark · Home / People · avatar ──────────── */
 .topbar {
   flex-shrink: 0; position: relative; z-index: 150;
-  background: color-mix(in srgb, var(--bg) 92%, transparent);
-  -webkit-backdrop-filter: saturate(180%) blur(16px); backdrop-filter: saturate(180%) blur(16px);
+  /* Solid, no backdrop blur: nothing scrolls behind the bar, and iOS 26
+     home-screen apps rendered the blurred bar's own contents fuzzy. */
+  background: var(--bg);
   border-bottom: 1px solid var(--border);
   padding: max(10px, env(safe-area-inset-top)) 12px 10px;
   padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right));
