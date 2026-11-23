@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
-import { Check, LogOut, MessageCircle, Camera, Pencil, ChevronDown, ChevronRight, BookOpen, ChartNoAxesColumn, UsersRound, Bell, BellOff } from 'lucide-react'
+import { Check, LogOut, MessageCircle, Camera, Pencil, ChevronDown, ChevronRight, BookOpen, ChartNoAxesColumn, UsersRound, Bell, BellOff, Send } from 'lucide-react'
 import PickerRow from './PickerRow.jsx'
 import { pushSupport, currentSubscription, turnOn, turnOff, sendTest } from './pushClient.js'
+import { shareInstallLink, INSTALL_PATH } from './install.js'
 import { initialsOf } from './Avatar.jsx'
 import { CREW_OPTIONS, CREW_LABEL } from './listMeta.js'
 import { DEFAULT_MESSAGE, PLACEHOLDERS, renderMessage } from './cardMeta.js'
@@ -82,6 +83,7 @@ export default function ProfileTab({ onOpenHelp, onOpenTeam, onOpenCrews, user, 
                   <ChevronRight size={16} />
                 </button>
               )}
+              <ShareInstallRow />
               <button className="settings-row" onClick={onOpenHelp}>
                 <span className="help-entry"><BookOpen size={17} />How the YA Toolkit works</span>
                 <ChevronRight size={16} />
@@ -306,7 +308,10 @@ function NotificationsSection() {
 
   let body
   if (support === 'needs-install') {
-    body = <p className="notif-text">On iPhone, notifications only work in the home-screen app. In Safari, tap Share, then <b>Add to Home Screen</b>, and open YA Toolkit from there.</p>
+    body = <>
+      <p className="notif-text">On iPhone, notifications only work in the home-screen app. Add YA Toolkit to your home screen, then open it from there.</p>
+      <a className="notif-go" href={INSTALL_PATH}>Show me how</a>
+    </>
   } else if (support === 'unsupported') {
     body = <p className="notif-text">This browser can't show notifications. Try the home-screen app on your phone.</p>
   } else if (support === 'denied') {
@@ -341,5 +346,21 @@ function NotificationsSection() {
         {err && <p className="notif-msg notif-err">{err}</p>}
       </div>
     </section>
+  )
+}
+
+// Lets any leader send another leader the install link (share sheet or copy).
+function ShareInstallRow() {
+  const [done, setDone] = useState('')
+  async function go() {
+    const r = await shareInstallLink()
+    setDone(r === 'copied' ? 'Link copied' : r === 'failed' ? "Couldn't copy" : '')
+    if (r === 'copied' || r === 'failed') setTimeout(() => setDone(''), 2000)
+  }
+  return (
+    <button className="settings-row" onClick={go}>
+      <span className="help-entry"><Send size={17} />Share the install link</span>
+      {done ? <span className="settings-done">{done}</span> : <ChevronRight size={16} />}
+    </button>
   )
 }

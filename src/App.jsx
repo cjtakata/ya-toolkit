@@ -12,6 +12,8 @@ import HelpGuide from './components/HelpGuide.jsx'
 import TeamStats from './components/TeamStats.jsx'
 import CrewCoverage from './components/CrewCoverage.jsx'
 import { MINISTRY } from '../ministry.config.js'
+import InstallPage from './components/InstallPage.jsx'
+import { INSTALL_PATH, isStandalone } from './components/install.js'
 
 function LoadingScreen({ label, progress }) {
   return (
@@ -28,6 +30,16 @@ function LoadingScreen({ label, progress }) {
 }
 
 export default function App() {
+  // /install: the shareable "add to your home screen" page, no sign-in needed.
+  // Opened from the home screen itself, it just goes into the app.
+  if (window.location.pathname === INSTALL_PATH) {
+    if (!isStandalone()) return <InstallPage />
+    window.history.replaceState(null, '', '/people')
+  }
+  return <SignedInGate />
+}
+
+function SignedInGate() {
   const [user, setUser]           = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
 
