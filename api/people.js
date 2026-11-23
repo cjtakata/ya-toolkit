@@ -1,11 +1,7 @@
 import { requireAuth } from './_lib/auth.js'
-import { pcoFetchAll, FIELD } from './_lib/pco.js'
-import { peopleById } from './_lib/person.js'
+import { loadYaPeople } from './_lib/person.js'
 
-// GET /api/people[?fresh=1] → everyone with one of these YA Statuses. Archived
-// people are included; the People list hides them unless its filter asks.
-// (Older values still stored in PCO, e.g. "Missing", stay off the list.)
-const STATUSES = new Set(['Active', 'Serving', 'Leader', 'Archived'])
+// GET /api/people[?fresh=1] → everyone on the YA list (see loadYaPeople).
 
 // Short in-memory cache so several leaders opening the app doesn't hammer PCO.
 // Pull-to-refresh asks for ?fresh=1; the app applies its own saves locally.
@@ -18,9 +14,7 @@ export default async function handler(req, res) {
 
   try {
     if (!_cache || Date.now() - _cacheAt > CACHE_MS || req.query?.fresh) {
-      const { data } = await pcoFetchAll(`/people/v2/field_data?where%5Bfield_definition_id%5D=${FIELD.status}&per_page=100`)
-      const ids = [...new Set(data.filter(d => STATUSES.has(d.attributes.value)).map(d => d.relationships.customizable.data.id))]
-      _cache = Object.values(await peopleById(ids)).sort((a, b) => a.name.localeCompare(b.name))
+      _cache = await loadYaPeople()
       _cacheAt = Date.now()
     }
     res.setHeader('Cache-Control', 'private, no-store')
