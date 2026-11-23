@@ -134,7 +134,6 @@ export default function HelpGuide({ isAdmin = false }) {
           <li>Tap <b>Text</b>. Messages opens with your saved message filled in. Tweak it and send. Already texted them from your own phone? Tap <b>Mark as texted</b> instead.<TextShot /></li>
           <li>Back here, answer <b>Did you send the text?</b> with <b>Yes, I sent it</b>. The card turns green.<ConfirmShot /></li>
           <li>Add a note under <b>Notes &amp; history</b> so other leaders know how it went.</li>
-          <li><b>Overdue:</b> a guest not texted within a day of their card gets an amber <b>Overdue</b> tag; after two days it turns red. Home shows how many are overdue at the top. Tap it to jump to them.</li>
         </ol>
         <p className="profile-hint help-after">No phone number on file? Reach them another way, then tap <b>Mark as contacted</b>.</p>
       </section>

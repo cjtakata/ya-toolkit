@@ -308,17 +308,6 @@ svg.lucide { vertical-align: middle; }
 .stat-amber { background: var(--amber-bg); border-color: var(--amber-line); color: var(--amber-ink); }
 .stat-amber .stat-num { color: var(--amber-deep); }
 .stat-indigo { color: var(--primary); }
-/* Overdue tile: full width above the four counts; amber at 24h, red once any pass 48h. */
-.stat-overdue {
-  grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 12px;
-  background: var(--amber-bg); border-color: var(--amber-line); color: var(--amber-ink);
-}
-.stat-overdue .stat-num { color: var(--amber-deep); margin-top: 0; }
-.stat-overdue-text { display: flex; align-items: baseline; gap: 8px; flex: 1; min-width: 0; }
-.stat-overdue-go { flex-shrink: 0; opacity: .7; }
-.stat-overdue-urgent { background: var(--red-bg); border-color: var(--red-line); color: var(--red-ink); }
-.stat-overdue-urgent .stat-num { color: var(--red-deep); }
-.stat-overdue:hover { border-color: currentColor; }
 
 .home-section { margin-top: 26px; }
 .home-section-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
@@ -708,12 +697,7 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
 .owner-chip-done { background: var(--green-soft); color: var(--green-ink); }
 .card-meta { display: flex; align-items: center; gap: 6px; margin-top: 3px; min-width: 0; }
 .card-line { font-size: var(--fs-subhead); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.overdue-chip {
-  font-size: var(--fs-caption); font-weight: var(--fw-semibold); padding: 1px 7px;
-  border-radius: var(--r-pill); white-space: nowrap; border: 1px solid;
-}
-.overdue-late   { background: var(--amber-soft); color: var(--amber-deep); border-color: var(--amber-line); }
-.overdue-urgent { background: var(--red-bg); color: var(--red-ink); border-color: var(--red-line); }
+.card-line.warn { color: var(--amber-ink); font-weight: var(--fw-semibold); }
 .card-row .person-name-row { gap: 6px; flex-wrap: wrap; }
 .row-claim {
   flex-shrink: 0; border: none; border-radius: var(--r-sm); cursor: pointer; font-family: inherit;
