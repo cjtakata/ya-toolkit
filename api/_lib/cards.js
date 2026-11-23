@@ -90,13 +90,15 @@ async function mapLimit(items, limit, fn) {
 }
 
 // Open cards + cards completed in the last RECENT_DAYS, each with who/when from notes.
-export async function listCards() {
+// allTime: every completed card instead (the admin reach-out dashboard).
+export async function listCards({ allTime = false } = {}) {
+  const donePath = `/people/v2/workflows/${WORKFLOW_ID}/cards?where%5Bstage%5D=completed&order=-completed_at&per_page=100`
   const [open, snoozed, done] = await Promise.all([
     pcoFetchAll(`/people/v2/workflows/${WORKFLOW_ID}/cards?where%5Bstage%5D=ready&per_page=100`),
     pcoFetchAll(`/people/v2/workflows/${WORKFLOW_ID}/cards?where%5Bstage%5D=snoozed&per_page=100`),
-    pcoFetch(`/people/v2/workflows/${WORKFLOW_ID}/cards?where%5Bstage%5D=completed&order=-completed_at&per_page=100`),
+    allTime ? pcoFetchAll(donePath) : pcoFetch(donePath),
   ])
-  const cutoff = Date.now() - RECENT_DAYS * 86_400_000
+  const cutoff = allTime ? 0 : Date.now() - RECENT_DAYS * 86_400_000
   const recentDone = (done.data || []).filter(c => new Date(c.attributes?.completed_at || 0).getTime() >= cutoff)
   const cards = [...open.data, ...snoozed.data, ...recentDone]
 
