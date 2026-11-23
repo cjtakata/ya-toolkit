@@ -4,6 +4,7 @@ import PeopleList from './components/PeopleList.jsx'
 import DetailPanel from './components/DetailPanel.jsx'
 import AppTopBar from './components/AppTopBar.jsx'
 import Sheet from './components/Sheet.jsx'
+import { LIST_META } from './components/listMeta.js'
 
 import HomeTab, { inCrew } from './components/HomeTab.jsx'
 import ProfileTab from './components/ProfileTab.jsx'
@@ -244,10 +245,10 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
     c.state === 'waiting' && inCrew(c, myCrew)).length, [currentCards, myCrew])
 
   const selectedPerson = allPeople.find(p => p.id === selectedId) ?? null
-  // Admins pick from these when assigning a guest (YA Status = Leader)
+  // YA Leaders: anyone can @mention them in notes; admins also assign guests to them
   const leaders = useMemo(
-    () => user.isAdmin ? people.filter(p => p.status === 'Leader').map(p => ({ id: p.id, name: p.name })) : [],
-    [people, user.isAdmin],
+    () => people.filter(p => p.status === 'Leader').map(p => ({ id: p.id, name: p.name, crewLabel: LIST_META[p.list]?.crew })),
+    [people],
   )
 
   // Phones show a person in a slide-up sheet; wider screens use the side panel.

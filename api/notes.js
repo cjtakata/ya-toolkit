@@ -1,6 +1,7 @@
 import { requireAuth } from './_lib/auth.js'
 import { pcoFetch } from './_lib/pco.js'
 import { personHistory } from './_lib/cards.js'
+import { checkMentions, notifyMentions } from './_lib/mentions.js'
 
 const CATEGORY_NAME = 'Young Adults'
 const NOTE_MAX = 10000
@@ -17,6 +18,8 @@ async function getYANoteCategoryId() {
   _catAt = Date.now()
   return _catId
 }
+
+// POST also takes mentions: [{type:'leader', id} | {type:'crew', key}] (see _lib/mentions.js).
 
 // Notes are authored under the shared API account, so the leader's name is
 // embedded as a "[Name] body" prefix. Parse it back out for display.
@@ -66,7 +69,7 @@ export default async function handler(req, res) {
 
     // ── Create a note on a person ─────────────────────────────
     if (req.method === 'POST') {
-      const { personId, body, followup } = req.body || {}
+      const { personId, body, followup, mentions } = req.body || {}
       if (!/^\d+$/.test(String(personId))) {
         return res.status(400).json({ error: 'Invalid person id' })
       }
@@ -93,12 +96,33 @@ export default async function handler(req, res) {
       })
 
       const n = created.data
+
+      // @mentions → text the leaders (via the Zapier "YA Mention" workflow).
+      // The note is already saved; a failed notification only gets logged.
+      const tagged = await checkMentions(text, mentions, user.id).catch(err => {
+        console.error('mention check failed:', err.message)
+        return { leaders: [], crews: [] }
+      })
+      let notified = null
+      if (tagged.leaders.length || tagged.crews.length) {
+        const r = await notifyMentions({
+          noteId:     n.id,
+          personId:   String(personId),
+          authorId:   String(user.id),
+          authorName: author,
+          leaderIds:  tagged.leaders.map(l => l.id),
+          crews:      tagged.crews.map(c => c.key),
+        })
+        notified = { ...r, leaders: tagged.leaders.map(l => l.name), crews: tagged.crews.map(c => c.label) }
+      }
+
       return res.json({
         id:        n.id,
         author,
         body:      text,
         followup:  !!followup,
         createdAt: n.attributes?.created_at,
+        notified,
       })
     }
 

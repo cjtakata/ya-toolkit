@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react'
 import { Check, Link2, ChevronLeft, ExternalLink, Flag, UserCheck, User, MessageCircle, Inbox, Hand, Undo2, CircleCheck, CircleMinus, Workflow, ShieldCheck } from 'lucide-react'
 import { LIST_META } from './listMeta.js'
 import PickerRow from './PickerRow.jsx'
 import Avatar from './Avatar.jsx'
 import { timeAgo, duration, shortDate, renderMessage, smsHref } from './cardMeta.js'
+import { mentionTargets, activeQuery, matchTargets, mentionsInText, splitMentions } from './mentions.js'
 
 const CREW_FALLBACK   = ['College Life', 'Early Career', 'Young Professional']
 const STATUS_FALLBACK = ['First Time Guest', 'Active', 'Missing', 'Friend', 'Alumni', 'Moved On']
@@ -53,6 +54,24 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
   const [showAllActivity, setShowAllActivity] = useState(false)
   const [noteText, setNoteText]       = useState('')
   const [posting, setPosting]         = useState(false)
+  // @mentions: what's been picked, the "@query" being typed, the highlighted suggestion
+  const noteRef = useRef(null)
+  const pendingCaret = useRef(null)
+  const [picked, setPicked]           = useState([])
+  const [mq, setMq]                   = useState(null)
+  const [mIndex, setMIndex]           = useState(0)
+  const [notice, setNotice]           = useState('')
+  const targets = useMemo(() => mentionTargets(leaders), [leaders])
+  const suggestions = mq ? matchTargets(targets, mq.query) : []
+  // After inserting a mention, put the caret right after it before the next keystroke
+  useLayoutEffect(() => {
+    const el = noteRef.current
+    if (el && pendingCaret.current != null) {
+      el.focus()
+      el.setSelectionRange(pendingCaret.current, pendingCaret.current)
+      pendingCaret.current = null
+    }
+  }, [noteText])
   const [cardBusy, setCardBusy]       = useState(false)
   const [confirmText, setConfirmText] = useState(false)   // "Did you send it?" after opening Messages
 
@@ -75,6 +94,9 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
     setNotes([])
     setShowAllActivity(false)
     setNoteText('')
+    setPicked([])
+    setMq(null)
+    setNotice('')
     setConfirmText(false)
     loadFeed()
   }, [person?.id])
@@ -99,7 +121,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
       const res = await fetch('/api/notes', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ personId: person.id, body: text }),
+        body:    JSON.stringify({ personId: person.id, body: text, mentions: mentionsInText(text, picked) }),
       })
       if (!res.ok) {
         const detail = (await res.json().catch(() => ({}))).error || `HTTP ${res.status}`
@@ -108,11 +130,41 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
       const note = await res.json()
       setNotes(prev => [note, ...prev])
       setNoteText('')
+      setPicked([])
+      setMq(null)
+      const who = [...(note.notified?.leaders || []), ...(note.notified?.crews || []).map(c => `${c} leaders`)]
+      if (who.length) {
+        setNotice(note.notified.sent ? `Texting ${listJoin(who)}` : `Note saved, but the text to ${listJoin(who)} didn't go out`)
+        setTimeout(() => setNotice(''), 5000)
+      }
     } catch (err) {
       alert(`Couldn't post note:\n\n${err.message}`)
     } finally {
       setPosting(false)
     }
+  }
+
+  function onNoteChange(e) {
+    setNoteText(e.target.value)
+    setMq(activeQuery(e.target.value, e.target.selectionStart))
+    setMIndex(0)
+  }
+  function pickMention(t) {
+    const el = noteRef.current
+    const caret = el ? el.selectionStart : noteText.length
+    const insert = `@${t.label} `
+    const next = noteText.slice(0, mq.start) + insert + noteText.slice(caret)
+    pendingCaret.current = mq.start + insert.length
+    setNoteText(next)
+    setPicked(p => [...p, t])
+    setMq(null)
+  }
+  function onNoteKeyDown(e) {
+    if (!mq || !suggestions.length) return
+    if (e.key === 'ArrowDown') { e.preventDefault(); setMIndex(i => (i + 1) % suggestions.length) }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setMIndex(i => (i - 1 + suggestions.length) % suggestions.length) }
+    else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); pickMention(suggestions[mIndex]) }
+    else if (e.key === 'Escape') { e.preventDefault(); setMq(null) }
   }
 
   async function cardAction(action, extra) {
@@ -273,11 +325,28 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
 
           <div className="note-compose">
             <textarea
+              ref={noteRef}
               className="note-compose-input"
-              placeholder="Add a note…"
+              placeholder="Add a note… type @ to text a leader or crew"
               value={noteText}
-              onChange={e => setNoteText(e.target.value)}
+              onChange={onNoteChange}
+              onKeyDown={onNoteKeyDown}
+              onBlur={() => setTimeout(() => setMq(null), 150)}
+              aria-autocomplete="list"
+              aria-expanded={suggestions.length > 0}
             />
+            {suggestions.length > 0 && (
+              <ul className="mention-menu" role="listbox">
+                {suggestions.map((t, i) => (
+                  <li key={t.type + (t.id || t.key)} role="option" aria-selected={i === mIndex}
+                    className={`mention-option${i === mIndex ? ' active' : ''}`}
+                    onMouseDown={e => { e.preventDefault(); pickMention(t) }}>
+                    <span className="mention-option-label">@{t.label}</span>
+                    <span className="mention-option-sub">{t.sub}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
             <button
               className="note-compose-btn"
               onClick={postNote}
@@ -287,6 +356,8 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
             </button>
           </div>
 
+          {notice && <div className="mention-notice">{notice}</div>}
+
           {notesLoading ? (
             <div className="notes-empty">Loading notes…</div>
           ) : notes.length === 0 ? (
@@ -295,7 +366,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
             <div className="notes-list">
               {(showAllActivity ? notes : notes.slice(0, FEED_PREVIEW)).map(n => n.kind === 'workflow'
                 ? <HistoryItem key={n.id} item={n} currentUser={currentUser} />
-                : <NoteItem key={n.id} note={n} currentUser={currentUser} />)}
+                : <NoteItem key={n.id} note={n} currentUser={currentUser} targets={targets} />)}
               {notes.length > FEED_PREVIEW && (
                 <button className="feed-more" onClick={() => setShowAllActivity(v => !v)}>
                   {showAllActivity ? 'Show less' : `View all activity (${notes.length})`}
@@ -470,7 +541,11 @@ function AdminCardTools({ card, person, leaders, currentUser, busy, onAction }) 
 
 // ── A posted note, laid out like the activity rows ──────────────────
 const FEED_PREVIEW = 10
-function NoteItem({ note: n, currentUser }) {
+function listJoin(xs) {
+  return xs.length <= 1 ? (xs[0] || '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`
+}
+
+function NoteItem({ note: n, currentUser, targets = [] }) {
   const who = n.author && n.author === currentUser ? 'You' : (n.author || 'Leader')
   return (
     <div className="hist-item hist-note">
@@ -478,7 +553,9 @@ function NoteItem({ note: n, currentUser }) {
         ? <span className="hist-icon hist-icon-fu"><Check size={14} strokeWidth={3} /></span>
         : <span className="hist-icon hist-icon-author" style={{ background: authorColor(n.author) }}>{authorInitials(n.author)}</span>}
       <span className="hist-text">
-        <strong>{who}</strong>{n.followup ? ' followed up' : ''}: {n.body}
+        <strong>{who}</strong>{n.followup ? ' followed up' : ''}: {splitMentions(n.body, targets).map((part, i) => part.target
+          ? <span key={i} className={`mention${part.target.type === 'leader' && part.target.label === currentUser ? ' mention-me' : ''}`}>{part.text}</span>
+          : part.text)}
       </span>
       <span className="note-time">{formatNoteDate(n.createdAt)}</span>
     </div>
