@@ -1,99 +1,101 @@
+// Planning Center API client + the custom-field ids this app reads and writes.
 const PCO_BASE = 'https://api.planningcenteronline.com'
 
-function authHeader() {
-  const creds = Buffer.from(`${process.env.PCO_APP_ID}:${process.env.PCO_SECRET}`).toString('base64')
-  return `Basic ${creds}`
+// Custom fields on the YA Details tab (ids are fixed in PCO; writes are only
+// ever allowed to these).
+export const FIELD = {
+  crew:        '431524',    // Crew (select)
+  status:      '1065431',   // YA Status (select): Active, Serving, Leader, Archived
+  textMessage: '1151583',   // YA Text Message (a leader's own greeting template)
+  nickname:    '1151595',   // YA Nickname (app-only)
+}
+
+export function authHeader() {
+  return 'Basic ' + Buffer.from(`${process.env.PCO_APP_ID}:${process.env.PCO_SECRET}`).toString('base64')
+}
+
+// Errors keep PCO's details for the server log; endpoints never send them to the browser.
+async function failure(res, url) {
+  return new Error(`PCO ${res.status} ${url}: ${(await res.text()).slice(0, 300)}`)
 }
 
 export async function pcoFetch(path, options = {}) {
   const url = path.startsWith('http') ? path : `${PCO_BASE}${path}`
   const res = await fetch(url, {
     ...options,
-    headers: {
-      Authorization: authHeader(),
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+    headers: { Authorization: authHeader(), 'Content-Type': 'application/json', ...options.headers },
   })
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(`PCO ${res.status} ${url}: ${text}`)
-  }
+  if (!res.ok) throw await failure(res, url)
   return res.json()
 }
 
 // Body-less POST for PCO action endpoints (promote, go_back, …). PCO rejects a
 // JSON content type with an empty body, and these may answer with no JSON.
 export async function pcoAction(path) {
-  const url = path.startsWith('http') ? path : `${PCO_BASE}${path}`
+  const url = `${PCO_BASE}${path}`
   const res = await fetch(url, { method: 'POST', headers: { Authorization: authHeader() } })
+  if (!res.ok) throw await failure(res, url)
   const text = await res.text()
-  if (!res.ok) throw new Error(`PCO ${res.status} ${url}: ${text}`)
   try { return text ? JSON.parse(text) : null } catch { return null }
 }
 
-// Fetches all pages, collecting both data and included arrays
+// Every page of a list, with `included` collected too.
 export async function pcoFetchAll(path) {
-  const allData     = []
-  const allIncluded = []
+  const data = [], included = []
   let url = `${PCO_BASE}${path}`
   while (url) {
     const page = await pcoFetch(url)
-    allData.push(...(page.data || []))
-    if (page.included) allIncluded.push(...page.included)
+    data.push(...(page.data || []))
+    if (page.included) included.push(...page.included)
     url = page.links?.next || null
   }
-  return { data: allData, included: allIncluded }
+  return { data, included }
 }
 
-// Module-level cache (lives for the duration of a warm function invocation)
-let _fieldDefs    = null
-let _fieldDefsAt  = 0
-
-export async function getFieldDefinitions() {
-  if (_fieldDefs && Date.now() - _fieldDefsAt < 5 * 60_000) return _fieldDefs
-
-  const { data } = await pcoFetchAll('/people/v2/field_definitions?per_page=100')
-  _fieldDefs   = Object.fromEntries(data.map(d => [d.attributes.name, d.id]))
-  _fieldDefsAt = Date.now()
-  return _fieldDefs
+// One custom-field value on a person, or null.
+export async function getDatum(personId, fieldId) {
+  const { data } = await pcoFetch(
+    `/people/v2/people/${personId}/field_data?where%5Bfield_definition_id%5D=${fieldId}&per_page=1`
+  )
+  return data?.[0] || null
 }
 
-// Resolve a field name from .env to its PCO field definition ID
-export function resolveFieldId(fieldDefs, envVar) {
-  const name = process.env[envVar]
-  if (!name) return null
-  return fieldDefs[name] ?? null
+// Create / update / clear one custom-field value on a person. Updates go to the
+// TOP-LEVEL field_data endpoint: the nested /people/{id}/field_data/{id} PATCH
+// mishandles select fields with a spurious "field datum already exists" 422.
+export async function setDatum(personId, fieldId, value) {
+  const existing = await getDatum(personId, fieldId)
+  if (!value) {
+    if (existing) await pcoFetch(`/people/v2/field_data/${existing.id}`, { method: 'DELETE' })
+    return null
+  }
+  if (existing) {
+    await pcoFetch(`/people/v2/field_data/${existing.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ data: { type: 'FieldDatum', id: existing.id, attributes: { value } } }),
+    })
+    return existing.id
+  }
+  const created = await pcoFetch(`/people/v2/people/${personId}/field_data`, {
+    method: 'POST',
+    body: JSON.stringify({
+      data: {
+        type: 'FieldDatum',
+        attributes: { value },
+        relationships: { field_definition: { data: { type: 'FieldDefinition', id: fieldId } } },
+      },
+    }),
+  })
+  return created.data?.id || null
 }
 
-// Fetch the valid option labels for a select-type custom field, cached briefly.
+// The valid option labels for a select-type field, cached briefly.
 const _fieldOptions = {}
-export async function getFieldOptions(defId) {
-  const cached = _fieldOptions[defId]
+export async function getFieldOptions(fieldId) {
+  const cached = _fieldOptions[fieldId]
   if (cached && Date.now() - cached.at < 5 * 60_000) return cached.opts
-  const { data } = await pcoFetchAll(`/people/v2/field_definitions/${defId}/field_options?per_page=100`)
+  const { data } = await pcoFetchAll(`/people/v2/field_definitions/${fieldId}/field_options?per_page=100`)
   const opts = data.map(o => o.attributes.value)
-  _fieldOptions[defId] = { opts, at: Date.now() }
+  _fieldOptions[fieldId] = { opts, at: Date.now() }
   return opts
-}
-
-export function avatarColor(name) {
-  const palette = [
-    '#6366f1','#0ea5e9','#ec4899','#f59e0b','#10b981',
-    '#8b5cf6','#ef4444','#14b8a6','#f97316','#84cc16','#a855f7','#3b82f6',
-  ]
-  let hash = 0
-  for (const c of name) hash = (hash << 5) - hash + c.charCodeAt(0)
-  return palette[Math.abs(hash) % palette.length]
-}
-
-export function calcAge(birthdate) {
-  if (!birthdate) return null
-  const diff = Date.now() - new Date(birthdate).getTime()
-  return Math.floor(diff / (365.25 * 24 * 3600 * 1000))
-}
-
-export function fmtSince(createdAt) {
-  if (!createdAt) return null
-  return new Date(createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
 }

@@ -1,115 +1,65 @@
-// Shared person loading/normalizing for /api/people and /api/cards.
-import { pcoFetchAll, avatarColor, calcAge, fmtSince } from './pco.js'
+// Loading and shaping people for /api/people and /api/cards.
+import { pcoFetchAll, FIELD } from './pco.js'
 
-function extractFieldValues(personId, included, fieldDefs) {
-  const crewDefId           = fieldDefs[process.env.PCO_FIELD_CREW]
-  const notesDefId          = fieldDefs[process.env.PCO_FIELD_NOTES]
-  const statusDefId         = fieldDefs[process.env.PCO_FIELD_STATUS]
-
-  const defIdToKey = {}
-  if (crewDefId)           defIdToKey[crewDefId]           = 'crew'
-  if (notesDefId)          defIdToKey[notesDefId]          = 'notes'
-  if (statusDefId)         defIdToKey[statusDefId]         = 'status'
-
-  const values  = {}
-  const dataIds = {}
-
-  for (const item of included) {
-    if (item.type !== 'FieldDatum') continue
-    if (item.relationships?.customizable?.data?.id !== personId) continue
-
-    const defId = item.relationships?.field_definition?.data?.id
-    const key   = defIdToKey[defId]
-    if (!key) continue
-
-    dataIds[key] = item.id
-    const raw    = item.attributes.value
-
-    values[key] = raw || ''
-  }
-
-  return { values, dataIds }
-}
-
-function extractPhone(personId, included) {
-  const phones = included.filter(
-    i => i.type === 'PhoneNumber' && i.relationships?.person?.data?.id === personId
-  )
-  const primary = phones.find(p => p.attributes.primary) || phones[0]
-  return primary?.attributes?.number || null
-}
-
-function extractEmail(personId, included) {
-  const emails = included.filter(
-    i => i.type === 'Email' && i.relationships?.person?.data?.id === personId
-  )
-  const primary = emails.find(e => e.attributes.primary) || emails[0]
-  return primary?.attributes?.address || ''
-}
-
-// Map a Crew custom field value to the list key used in the frontend.
-// Normalized (trim + lowercase) because PCO's stored values can carry stray
-// whitespace — e.g. the "College Life " option includes a trailing space.
+// Crew field value → the key the app uses. Normalized because PCO's stored
+// values can carry stray whitespace (the "College Life " option has a trailing space).
 export function crewToList(value) {
   const v = (value || '').trim().toLowerCase()
-  if (v === 'college life')  return 'college'
-  if (v === 'early career')  return 'earlycareer'
+  if (v === 'college life') return 'college'
+  if (v === 'early career') return 'earlycareer'
   if (v === 'young professional' || v === 'young professionals') return 'youngpro'
   return 'unassigned'
 }
 
-export function normalizePerson(raw, included, fieldDefs) {
-  const a  = raw.attributes
-  const id = raw.id
+const GENDER = { M: 'Male', F: 'Female' }
 
-  const { values, dataIds } = extractFieldValues(id, included, fieldDefs)
+function age(birthdate) {
+  return birthdate ? Math.floor((Date.now() - new Date(birthdate).getTime()) / (365.25 * 86_400_000)) : null
+}
 
-  const firstName = a.first_name || ''
-  const lastName  = a.last_name  || ''
-  const name      = [firstName, lastName].filter(Boolean).join(' ') || 'Unknown'
-  const age       = calcAge(a.birthdate)
+// PCO's generated initials image isn't a real photo
+export const realAvatar = url => (url && !/\/uploads\/initials\//.test(url) ? url : null)
 
-  // Determine list/group from Crew custom field only (normalized lookup)
-  const list = crewToList(values.crew)
-  const listNames    = { college: 'College Life', earlycareer: 'Early Career', youngpro: 'Young Professional', unassigned: 'Unassigned' }
+export function normalizePerson(raw, included) {
+  const a = raw.attributes, id = raw.id
+  const mine = (type, key) => included.filter(i => i.type === type && i.relationships?.[key]?.data?.id === id)
+  const primary = list => list.find(x => x.attributes.primary) || list[0]
+
+  let crew = '', status = ''
+  for (const d of mine('FieldDatum', 'customizable')) {
+    const def = d.relationships?.field_definition?.data?.id
+    if (def === FIELD.crew)   crew   = d.attributes.value || ''
+    if (def === FIELD.status) status = d.attributes.value || ''
+  }
 
   return {
     id,
-    name,
-    email:          extractEmail(id, included),
-    phone:          extractPhone(id, included),
-    age,
-    gender:         a.gender || null,
-    since:          fmtSince(a.created_at),
-    // PCO's generated initials image isn't a real photo; the app shows a stock avatar instead
-    avatar:         a.avatar && !/\/uploads\/initials\//.test(a.avatar) ? a.avatar : null,
-    color:          avatarColor(name),
-    list,
-    listName:       listNames[list],
-    crew:            values.crew           || '',
-    notes:           values.notes          || '',
-    status:          values.status         || '',
-    _fieldDataIds:   dataIds,
+    name:   [a.first_name, a.last_name].filter(Boolean).join(' ') || 'Unknown',
+    email:  primary(mine('Email', 'person'))?.attributes?.address || '',
+    phone:  primary(mine('PhoneNumber', 'person'))?.attributes?.number || null,
+    age:    age(a.birthdate),
+    gender: GENDER[a.gender] || a.gender || null,
+    // When their Planning Center profile was created (not church membership)
+    since:  a.created_at ? new Date(a.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : null,
+    avatar: realAvatar(a.avatar),
+    list:   crewToList(crew),
+    crew,
+    status,
   }
 }
 
-// Fetch people in batches by IDs using PCO's where[id] param
+// People by id, 50 per request (PCO's where[id] limit), requests in parallel.
 export async function fetchPeopleByIds(ids) {
-  const BATCH = 50
-  const allData     = []
-  const allIncluded = []
-
-  for (let i = 0; i < ids.length; i += BATCH) {
-    const batch  = ids.slice(i, i + BATCH)
-    const idList = batch.join(',')
-    // URL-encode brackets so Node fetch doesn't choke on them
-    const { data, included } = await pcoFetchAll(
-      `/people/v2/people?where%5Bid%5D=${idList}&include=phone_numbers,emails,field_data&per_page=100`
-    )
-    allData.push(...data)
-    allIncluded.push(...included)
-  }
-
-  return { data: allData, included: allIncluded }
+  const batches = []
+  for (let i = 0; i < ids.length; i += 50) batches.push(ids.slice(i, i + 50))
+  const pages = await Promise.all(batches.map(b =>
+    pcoFetchAll(`/people/v2/people?where%5Bid%5D=${b.join(',')}&include=phone_numbers,emails,field_data&per_page=100`)))
+  return { data: pages.flatMap(p => p.data), included: pages.flatMap(p => p.included) }
 }
 
+// Shape a batch of people by id → { id: person }
+export async function peopleById(ids) {
+  if (!ids.length) return {}
+  const { data, included } = await fetchPeopleByIds(ids)
+  return Object.fromEntries(data.map(p => [p.id, normalizePerson(p, included)]))
+}

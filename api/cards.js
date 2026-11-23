@@ -1,6 +1,6 @@
 import { requireAuth, isAdmin, isLeaderPerson } from './_lib/auth.js'
-import { getFieldDefinitions, pcoFetch } from './_lib/pco.js'
-import { normalizePerson, fetchPeopleByIds } from './_lib/person.js'
+import { pcoFetch } from './_lib/pco.js'
+import { peopleById } from './_lib/person.js'
 import { listCards, claimCard, releaseCard, markTexted, removeCard, CardError } from './_lib/cards.js'
 
 // GET  /api/cards                      → connection-card follow-ups (open + last 30 days)
@@ -26,10 +26,7 @@ export default async function handler(req, res) {
       const cards = (await listCards()).filter(c => c.state !== 'removed' && c.personId)
 
       // Attach each guest's profile (name, phone, crew, status…) in batched calls.
-      const ids = [...new Set(cards.map(c => c.personId))]
-      const fieldDefs = await getFieldDefinitions()
-      const { data, included } = ids.length ? await fetchPeopleByIds(ids) : { data: [], included: [] }
-      const people = Object.fromEntries(data.map(p => [p.id, normalizePerson(p, included, fieldDefs)]))
+      const people = await peopleById([...new Set(cards.map(c => c.personId))])
 
       const out = cards
         .map(c => ({ ...c, person: people[c.personId] || null }))

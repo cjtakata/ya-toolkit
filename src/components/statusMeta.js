@@ -1,19 +1,11 @@
-// Maps a YA Status value to its tag CSS class. Keyed by a normalized form
-// (lowercased, spaces stripped) so "Moved On" → "movedon".
+// YA Status → badge class. Older values still stored in PCO fall back to the plain badge.
 const STATUS_CLASS = {
-  active:         'badge-status-active',
-  missing:        'badge-status-missing',
-  tbd:            'badge-status-tbd',
-  friend:         'badge-status-friend',
-  alumni:         'badge-status-alumni',
-  movedon:        'badge-status-movedon',
-  firsttimeguest: 'badge-status-ftg',
-  leader:         'badge-status-leader',
-  serving:        'badge-status-serving',
-  archived:       'badge-status-movedon',
+  active:   'badge-status-active',
+  serving:  'badge-status-serving',
+  leader:   'badge-status-leader',
+  archived: 'badge-status-archived',
 }
 
 export function statusClass(status) {
-  const key = (status || '').toLowerCase().replace(/\s+/g, '')
-  return STATUS_CLASS[key] || 'badge-crew'
+  return STATUS_CLASS[(status || '').trim().toLowerCase()] || 'badge-crew'
 }

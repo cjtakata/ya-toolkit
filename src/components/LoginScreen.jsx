@@ -66,7 +66,7 @@ export default function LoginScreen() {
         <div className="login-logo">{LOGO}</div>
         <div>
           <div className="login-title">YA Toolkit</div>
-          <div className="login-tagline">Ministry leader portal</div>
+          <div className="login-tagline">For Venture Young Adults leaders</div>
         </div>
 
         {step === 'email' ? (

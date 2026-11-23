@@ -1,12 +1,9 @@
-import { StickyNote } from 'lucide-react'
 import { LIST_META } from './listMeta.js'
 import { statusClass } from './statusMeta.js'
 import Avatar from './Avatar.jsx'
 
 export default function PersonRow({ person: p, card = null, selected, onClick, currentUser }) {
   const lm = LIST_META[p.list] || { crew: p.list, badgeCls: '' }
-
-  const hasNote = !!(p.notes && p.notes.trim())
 
   // Connection-card status, if this person has an open/recent card
   let cardChip = null
@@ -20,7 +17,6 @@ export default function PersonRow({ person: p, card = null, selected, onClick, c
       <div className="person-info">
         <div className="person-name-row">
           <span className="person-name">{p.name}</span>
-          {hasNote && <StickyNote className="note-indicator" size={13} aria-label="Has a note" />}
         </div>
         <div className="person-chips">
           {p.status && <span className={`badge ${statusClass(p.status)}`}>{p.status}</span>}

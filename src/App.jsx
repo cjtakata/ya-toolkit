@@ -148,7 +148,7 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
     report(0.1)
     const results = await Promise.allSettled([
       loadCards(true).finally(step),
-      fetch('/api/people').then(r => r.ok ? r.json() : Promise.reject(new Error('people')))
+      fetch('/api/people?fresh=1').then(r => r.ok ? r.json() : Promise.reject(new Error('people')))
         .then(data => { if (Array.isArray(data)) setPeople(data) })
         .finally(step),
     ])
@@ -270,18 +270,14 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
-    if (!res.ok) {
-      let detail = ''
-      try { detail = (await res.json()).detail || '' } catch { /* ignore */ }
-      throw new Error(detail || `Save failed (HTTP ${res.status})`)
-    }
-    const updated = await res.json()
+    const updated = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(updated.error || `Save failed (HTTP ${res.status})`)
     setPeople(prev => prev.map(p => p.id === id ? { ...p, ...updated } : p))
     setCards(prev => prev.map(c => c.personId === id ? { ...c, person: { ...c.person, ...updated } } : c))
     return updated
   }
 
-  // Nickname or photo → the leader's own PCO profile (see api/me.js)
+  // Nickname, photo or text message → the leader's own PCO profile (see api/me.js)
   async function saveProfile(change) {
     const res = await fetch('/api/me', {
       method: 'POST',
@@ -290,19 +286,9 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
     })
     const data = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(data.error || `Couldn't save (HTTP ${res.status})`)
-    if ('nickname' in change) onUserChange({ nickname: data.nickname })
-    if ('photo' in change)    onUserChange({ avatar: data.avatar })
-  }
-
-  async function saveTextMessage(textMessage) {
-    const res = await fetch('/api/me', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ textMessage }),
-    })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.error || `Couldn't save (HTTP ${res.status})`)
-    onUserChange({ textMessage: data.textMessage })
+    if ('nickname' in change)    onUserChange({ nickname: data.nickname })
+    if ('photo' in change)       onUserChange({ avatar: data.avatar })
+    if ('textMessage' in change) onUserChange({ textMessage: data.textMessage })
   }
 
   async function handleLogout() {
@@ -311,6 +297,19 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
   }
 
   if (loading) return <LoadingScreen label={loadLabel} progress={loadProgress} />
+
+  const detailProps = person => ({
+    person,
+    crewOptions, statusOptions, currentUser, leaders,
+    textTemplate: user.textMessage || '',
+    leaderFirst:  user.nickname || currentUser.split(' ')[0],
+    card:         person ? cardsByPerson[person.id] || null : null,
+    onCardAction: handleCardAction,
+    isAdmin:      !!user.isAdmin,
+    backLabel:    tab === 'home' ? 'Home' : 'People',
+    onClose:      () => setSelectedId(null),
+    onSave:       handleSave,
+  })
 
   return (
     <div className="app-screen">
@@ -329,13 +328,11 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
             onPullRefresh={refreshAll}
             onClaim={claimFromList}
             busyCard={busyCard}
-            people={people}
             myCrew={myCrew}
             currentUser={currentUser}
             selectedId={selectedId}
             onSelect={setSelectedId}
             onSeeAll={openSearch}
-            onChangeCrew={() => setProfileOpen(true)}
           />
         </div>
         {/* Search stays mounted so filters survive switching tabs */}
@@ -354,48 +351,19 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
             onPullRefresh={refreshAll}
           />
         </div>
-        {!isPhone && <DetailPanel
-          person={selectedPerson}
-          crewOptions={crewOptions}
-          statusOptions={statusOptions}
-          currentUser={currentUser}
-          textTemplate={user.textMessage || ''}
-          leaderFirst={user.nickname || currentUser.split(' ')[0]}
-          card={selectedPerson ? cardsByPerson[selectedPerson.id] || null : null}
-          onCardAction={handleCardAction}
-          isAdmin={!!user.isAdmin}
-          leaders={leaders}
-          backLabel={tab === 'home' ? 'Home' : 'People'}
-          onClose={() => setSelectedId(null)}
-          onSave={handleSave}
-        />}
+        {!isPhone && <DetailPanel {...detailProps(selectedPerson)} />}
       </div>
       {isPhone && (
         <Sheet open={!!selectedPerson} tall onClose={() => setSelectedId(null)}>
-          <DetailPanel
-          variant="sheet"
-          person={sheetPerson}
-          crewOptions={crewOptions}
-          statusOptions={statusOptions}
-          currentUser={currentUser}
-          textTemplate={user.textMessage || ''}
-          leaderFirst={user.nickname || currentUser.split(' ')[0]}
-          card={sheetPerson ? cardsByPerson[sheetPerson.id] || null : null}
-          onCardAction={handleCardAction}
-          isAdmin={!!user.isAdmin}
-          leaders={leaders}
-          backLabel={tab === 'home' ? 'Home' : 'People'}
-          onClose={() => setSelectedId(null)}
-          onSave={handleSave}
-        />
+          <DetailPanel variant="sheet" {...detailProps(sheetPerson)} />
         </Sheet>
       )}
       <Sheet open={profileOpen} title="Profile" showTitle={false} onClose={() => setProfileOpen(false)}>
         <ProfileTab onOpenHelp={() => { setProfileOpen(false); setHelpOpen(true) }} user={user} myCrew={myCrew} onChooseCrew={chooseCrew} onLogout={handleLogout}
-          onSaveMessage={saveTextMessage} onSaveProfile={saveProfile} />
+          onSaveMessage={textMessage => saveProfile({ textMessage })} onSaveProfile={saveProfile} />
       </Sheet>
       <Sheet open={helpOpen} title="How it works" tall onClose={() => setHelpOpen(false)}>
-        <HelpGuide />
+        <HelpGuide isAdmin={!!user.isAdmin} />
       </Sheet>
     </div>
   )

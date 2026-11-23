@@ -1,56 +1,32 @@
 import { requireAuth } from './_lib/auth.js'
-import { pcoFetchAll, getFieldDefinitions } from './_lib/pco.js'
-import { normalizePerson, fetchPeopleByIds } from './_lib/person.js'
+import { pcoFetchAll, FIELD } from './_lib/pco.js'
+import { peopleById } from './_lib/person.js'
 
-// YA Status values shown in the app's care list.
-// Active = engaged, Missing = drifted but still pursuing,
-// TBD = under evaluation / not yet categorised.
-// Friend, Alumni, Moved On are excluded (they drop off the care list).
-// YA Status options (2026-11-22): Active, Serving, Leader, Archived. Archived people are
-// loaded too, but the People list hides them unless the Archived filter is on.
-const ACTIVE_STATUSES = new Set(['Active', 'Serving', 'Leader', 'Archived'])
+// GET /api/people[?fresh=1] → everyone with one of these YA Statuses. Archived
+// people are included; the People list hides them unless its filter asks.
+// (Older values still stored in PCO, e.g. "Missing", stay off the list.)
+const STATUSES = new Set(['Active', 'Serving', 'Leader', 'Archived'])
 
+// Short in-memory cache so several leaders opening the app doesn't hammer PCO.
+// Pull-to-refresh asks for ?fresh=1; the app applies its own saves locally.
+let _cache = null, _cacheAt = 0
+const CACHE_MS = 30_000
 
 export default async function handler(req, res) {
   const user = await requireAuth(req, res)
   if (!user) return
 
   try {
-    const fieldDefs = await getFieldDefinitions()
-
-    // 1. Fetch all field_data records for the YA Status field
-    const statusDefId = fieldDefs[process.env.PCO_FIELD_STATUS]
-    if (!statusDefId) throw new Error('YA Status field definition not found')
-
-    const { data: statusRecords } = await pcoFetchAll(
-      `/people/v2/field_data?where%5Bfield_definition_id%5D=${statusDefId}&per_page=100`
-    )
-
-    // 2. Filter to active statuses and collect person IDs
-    const personIds = statusRecords
-      .filter(r => ACTIVE_STATUSES.has(r.attributes.value))
-      .map(r => r.relationships.customizable.data.id)
-
-    if (personIds.length === 0) {
-      return res.json([])
+    if (!_cache || Date.now() - _cacheAt > CACHE_MS || req.query?.fresh) {
+      const { data } = await pcoFetchAll(`/people/v2/field_data?where%5Bfield_definition_id%5D=${FIELD.status}&per_page=100`)
+      const ids = [...new Set(data.filter(d => STATUSES.has(d.attributes.value)).map(d => d.relationships.customizable.data.id))]
+      _cache = Object.values(await peopleById(ids)).sort((a, b) => a.name.localeCompare(b.name))
+      _cacheAt = Date.now()
     }
-
-    // 3. Fetch full profiles for those people
-    const { data, included } = await fetchPeopleByIds(personIds)
-
-    // 4. Normalize
-    const people = data.map(raw => normalizePerson(raw, included, fieldDefs))
-
-    // Sort by name
-    people.sort((a, b) => a.name.localeCompare(b.name))
-
-    res.json(people)
+    res.setHeader('Cache-Control', 'private, no-store')
+    res.json(_cache)
   } catch (err) {
     console.error('people.js error:', err)
-    const isDev = process.env.VERCEL_ENV !== 'production'
-    res.status(500).json({
-      error: 'Failed to fetch people from PCO',
-      ...(isDev && { detail: err.message }),
-    })
+    res.status(500).json({ error: "Couldn't load people from Planning Center" })
   }
 }

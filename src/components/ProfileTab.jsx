@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect } from 'react'
 import { Check, LogOut, MessageCircle, Camera, Pencil, ChevronDown, ChevronRight, BookOpen } from 'lucide-react'
 import PickerRow from './PickerRow.jsx'
+import { initialsOf } from './Avatar.jsx'
 import { CREW_OPTIONS, CREW_LABEL } from './listMeta.js'
 import { DEFAULT_MESSAGE, PLACEHOLDERS, renderMessage } from './cardMeta.js'
 
 // Profile: who's signed in, which crew the app focuses on, and sign out.
 export default function ProfileTab({ onOpenHelp, user, myCrew = 'all', onChooseCrew, onLogout, onSaveMessage, onSaveProfile }) {
   const name     = user.global_name || user.username || 'Leader'
-  const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  const initials = initialsOf(name)
   const email    = user.username && user.username.includes('@') ? user.username : null
   const fileRef  = useRef(null)
   const [photoBusy, setPhotoBusy] = useState(false)

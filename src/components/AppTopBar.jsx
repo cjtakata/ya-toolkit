@@ -1,4 +1,5 @@
 import { House, Users } from 'lucide-react'
+import { initialsOf } from './Avatar.jsx'
 
 // Top bar = app chrome only: YA mark · Home / People switcher · avatar.
 // Everything below it belongs to the section you're on. Nothing is pinned to
@@ -12,7 +13,7 @@ const SEGMENTS = [
 
 export default function AppTopBar({ tab, onChange, user, badge = 0, onOpenProfile }) {
   const name     = user.global_name || user.username || '?'
-  const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  const initials = initialsOf(name)
 
   return (
     <header className="topbar">
