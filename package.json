@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.12.0",
     "jose": "^5.9.6",
     "lucide-react": "^0.544.0",
     "react": "^18.3.1",

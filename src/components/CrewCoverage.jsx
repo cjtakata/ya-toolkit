@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { Users, UserRoundCheck } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Users, UserRoundCheck, Sparkles, RefreshCw } from 'lucide-react'
 import { crewStats, perLeaderText } from './crewStats.js'
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`
@@ -39,6 +39,8 @@ export default function CrewCoverage({ people = [], cards = [], loading }) {
           )}
         </div>
       )}
+
+      <AiSuggestions />
 
       {s.crews.filter(c => c.key !== 'unassigned').map(c => {
         const lc = count(c.leaders)
@@ -101,6 +103,57 @@ export default function CrewCoverage({ people = [], cards = [], loading }) {
         From each person's YA Status, Crew and gender in Planning Center. “People” counts Active and Serving;
         Archived aren't counted. Leaders count toward the crew set on their own profile.
       </p>
+    </div>
+  )
+}
+
+// On demand only (each run costs a little): Claude reads the same numbers,
+// plus last-30-day reach-outs, and suggests next steps. See api/insights.js.
+function AiSuggestions() {
+  const [state, setState] = useState({ status: 'idle' })
+  async function run(fresh) {
+    setState({ status: 'loading' })
+    try {
+      const r = await fetch('/api/insights', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fresh }),
+      })
+      const j = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(j.error || 'Something went wrong. Try again.')
+      setState({ status: 'done', ...j })
+    } catch (e) {
+      setState({ status: 'error', error: e.message })
+    }
+  }
+  const when = state.generatedAt &&
+    new Date(state.generatedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+
+  return (
+    <div className="ai-card">
+      <div className="ai-head">
+        <span className="ai-title"><Sparkles size={16} /> AI suggestions</span>
+        {state.status === 'done' && (
+          <button className="home-link" onClick={() => run(true)}><RefreshCw size={13} /> Refresh</button>
+        )}
+      </div>
+      {state.status === 'idle' && (
+        <>
+          <p className="ai-sub">Claude looks at these numbers and the last 30 days of reach-outs, and suggests where to help.</p>
+          <button className="ai-go" onClick={() => run(false)}>Get suggestions</button>
+        </>
+      )}
+      {state.status === 'loading' && <p className="ai-sub">Thinking… this can take up to 30 seconds.</p>}
+      {state.status === 'error' && (
+        <>
+          <p className="ai-sub ai-err">{state.error}</p>
+          <button className="ai-go" onClick={() => run(true)}>Try again</button>
+        </>
+      )}
+      {state.status === 'done' && (
+        <>
+          <ul className="ai-list">{state.suggestions.map((x, i) => <li key={i}>{x}</li>)}</ul>
+          <p className="ai-foot">AI-generated{when ? ` at ${when}` : ''}. It only sees counts and leader names, so check before acting.</p>
+        </>
+      )}
     </div>
   )
 }

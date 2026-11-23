@@ -63,3 +63,13 @@ export async function peopleById(ids) {
   const { data, included } = await fetchPeopleByIds(ids)
   return Object.fromEntries(data.map(p => [p.id, normalizePerson(p, included)]))
 }
+
+// Everyone on the YA list: one of these YA Statuses. Archived people are
+// included; the People list hides them unless its filter asks. (Older values
+// still stored in PCO, e.g. "Missing", stay off the list.)
+const YA_STATUSES = new Set(['Active', 'Serving', 'Leader', 'Archived'])
+export async function loadYaPeople() {
+  const { data } = await pcoFetchAll(`/people/v2/field_data?where%5Bfield_definition_id%5D=${FIELD.status}&per_page=100`)
+  const ids = [...new Set(data.filter(d => YA_STATUSES.has(d.attributes.value)).map(d => d.relationships.customizable.data.id))]
+  return Object.values(await peopleById(ids)).sort((a, b) => a.name.localeCompare(b.name))
+}
