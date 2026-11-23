@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
-import { Check, LogOut, MessageCircle, Camera, Pencil, ChevronDown, ChevronRight, BookOpen, ChartNoAxesColumn, UsersRound } from 'lucide-react'
+import { Check, LogOut, MessageCircle, Camera, Pencil, ChevronDown, ChevronRight, BookOpen, ChartNoAxesColumn, UsersRound, Bell, BellOff } from 'lucide-react'
 import PickerRow from './PickerRow.jsx'
+import { pushSupport, currentSubscription, turnOn, turnOff, sendTest } from './pushClient.js'
 import { initialsOf } from './Avatar.jsx'
 import { CREW_OPTIONS, CREW_LABEL } from './listMeta.js'
 import { DEFAULT_MESSAGE, PLACEHOLDERS, renderMessage } from './cardMeta.js'
@@ -63,6 +64,8 @@ export default function ProfileTab({ onOpenHelp, onOpenTeam, onOpenCrews, user, 
         </section>
 
         <MessageEditor user={user} myCrew={myCrew} onSave={onSaveMessage} />
+
+        <NotificationsSection />
 
         {onOpenHelp && (
           <section className="home-section">
@@ -276,5 +279,67 @@ function NicknameRow({ user, onSave }) {
         </form>
       )}
     </div>
+  )
+}
+
+// Push notifications for @mentions, per device.
+function NotificationsSection() {
+  const [server, setServer] = useState(null)        // { enabled, publicKey } from /api/push
+  const [on, setOn]         = useState(false)       // this device is subscribed
+  const [busy, setBusy]     = useState(false)
+  const [msg, setMsg]       = useState('')
+  const [err, setErr]       = useState('')
+  const support = pushSupport()
+
+  useEffect(() => {
+    fetch('/api/push').then(r => (r.ok ? r.json() : { enabled: false })).then(setServer).catch(() => setServer({ enabled: false }))
+    currentSubscription().then(s => setOn(!!s)).catch(() => {})
+  }, [])
+
+  async function run(fn, done) {
+    setBusy(true); setErr(''); setMsg('')
+    try { await fn(); done && done() } catch (e) { setErr(e.message || 'Something went wrong. Try again.') }
+    finally { setBusy(false) }
+  }
+
+  if (!server?.enabled) return null   // not set up on the server yet: hide the section
+
+  let body
+  if (support === 'needs-install') {
+    body = <p className="notif-text">On iPhone, notifications only work in the home-screen app. In Safari, tap Share, then <b>Add to Home Screen</b>, and open YA Toolkit from there.</p>
+  } else if (support === 'unsupported') {
+    body = <p className="notif-text">This browser can't show notifications. Try the home-screen app on your phone.</p>
+  } else if (support === 'denied') {
+    body = <p className="notif-text">Notifications are blocked for this app. Turn them on in your phone's <b>Settings → Notifications → YA Toolkit</b>, then come back here.</p>
+  } else if (!on) {
+    body = <>
+      <p className="notif-text">Get a notification on this device when someone @mentions you or your crew.</p>
+      <button className="notif-go" disabled={busy} onClick={() => run(() => turnOn(server.publicKey), () => { setOn(true); setMsg('Notifications are on for this device.') })}>
+        <Bell size={16} /> {busy ? 'Turning on…' : 'Turn on notifications'}
+      </button>
+    </>
+  } else {
+    body = <>
+      <p className="notif-text"><b>On for this device.</b> You'll get a notification when someone @mentions you or your crew.</p>
+      <div className="notif-actions">
+        <button className="notif-link" disabled={busy} onClick={() => run(async () => {
+          const r = await sendTest(); setMsg(r.reached ? 'Test sent. It should appear in a few seconds.' : "Couldn't reach this device. Try turning notifications off and on again.")
+        })}>Send a test</button>
+        <button className="notif-link notif-off" disabled={busy} onClick={() => run(turnOff, () => { setOn(false); setMsg('Notifications are off for this device.') })}>
+          <BellOff size={14} /> Turn off
+        </button>
+      </div>
+    </>
+  }
+
+  return (
+    <section className="home-section">
+      <div className="home-section-head"><h2>Notifications</h2></div>
+      <div className="notif-card">
+        {body}
+        {msg && <p className="notif-msg">{msg}</p>}
+        {err && <p className="notif-msg notif-err">{err}</p>}
+      </div>
+    </section>
   )
 }

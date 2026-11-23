@@ -6,6 +6,7 @@
 import { pcoFetch } from './pco.js'
 import { isLeaderPerson } from './auth.js'
 import { clearstreamReady, inQuietHours, loadLeaders, recipients, mentionText, sendText } from './texting.js'
+import { pushReady, pushToMany } from './push.js'
 import { MINISTRY } from '../../ministry.config.js'
 
 export const CREWS = Object.fromEntries(MINISTRY.crews.map(c => [c.key, c.label]))
@@ -38,30 +39,81 @@ export async function checkMentions(text, raw, authorId) {
   return { leaders, crews }
 }
 
-// Text the mentioned leaders. Never throws: a failed notification must not
+// Notify the mentioned leaders. Never throws: a failed notification must not
 // fail the note.
+// Texts:
 //   Clearstream key set, and not quiet hours (or "Send now"): the app texts
 //     them directly through Clearstream.
 //   Otherwise: hand off to the Zapier "YA Mention" workflow as before; it
 //     also holds quiet-hours texts until morning.
+// Push notifications (leaders who turned them on), alongside the texts:
+//   sent now unless it's quiet hours without "Send now" (then the 8am text
+//   is the reminder).
 // payload: { noteId, personId, authorId, authorName, leaderIds, crews, urgent, quote }
 export async function notifyMentions(payload) {
-  const direct = clearstreamReady() && (payload.urgent || !inQuietHours())
-  if (!direct) return notifyViaZapier(payload)
-  try {
-    return { ...(await textDirectly(payload)), via: 'clearstream' }
-  } catch (err) {
-    console.error('mention texting failed:', err.message)
-    return { sent: false, via: 'clearstream', reason: err.message }
-  }
+  const quiet = inQuietHours()
+  const direct = clearstreamReady() && (payload.urgent || !quiet)
+  const wantPush = pushReady() && (payload.urgent || !quiet)
+
+  // Shared Planning Center lookups, loaded once and only if needed.
+  let leaders, guest
+  const lookups = () => (leaders && guest) ? Promise.resolve() : Promise.all([
+    loadLeaders().then(x => { leaders = x }),
+    pcoFetch(`/people/v2/people/${payload.personId}`).then(({ data }) => {
+      guest = [data?.attributes?.first_name, data?.attributes?.last_name].filter(Boolean).join(' ') || 'a guest'
+    }),
+  ])
+
+  const texting = direct
+    ? lookups().then(() => textDirectly(payload, leaders, guest)).then(r => ({ ...r, via: 'clearstream' }))
+        .catch(err => { console.error('mention texting failed:', err.message); return { sent: false, via: 'clearstream', reason: err.message } })
+    : notifyViaZapier(payload)
+  const pushing = wantPush
+    ? lookups().then(() => pushMentions(payload, leaders, guest))
+        .catch(err => { console.error('mention push failed:', err.message); return null })
+    : Promise.resolve(null)
+
+  const [text, push] = await Promise.all([texting, pushing])
+  return push ? { ...text, pushed: push.leaders } : text
 }
 
-async function textDirectly({ personId, authorId, authorName, leaderIds, crews, quote }) {
-  const [leaders, guest] = await Promise.all([
-    loadLeaders(),
-    pcoFetch(`/people/v2/people/${personId}`).then(({ data }) =>
-      [data?.attributes?.first_name, data?.attributes?.last_name].filter(Boolean).join(' ') || 'a guest'),
-  ])
+// Who a mention reaches for push: mentioned leaders + every leader of a
+// mentioned crew, never the author. (Phones don't matter here.)
+export function pushRecipients(leaders, { leaderIds, crews, authorId }) {
+  const ids = new Set(leaderIds.map(String))
+  for (const l of leaders) if (l.crew && crews.includes(l.crew)) ids.add(l.id)
+  ids.delete(String(authorId))
+  return [...ids].filter(id => leaders.some(l => l.id === id))
+}
+
+async function pushMentions({ noteId, personId, authorId, authorName, leaderIds, crews, quote }, leaders, guest) {
+  const labels = Object.fromEntries(MINISTRY.crews.map(c => [c.key, c.label]))
+  const direct = new Set(leaderIds.map(String))
+  const author = authorName.trim().split(/\s+/)[0] || authorName
+  const guestFirst = guest.trim().split(/\s+/)[0] || guest
+  const q = quote.replace(/\s+/g, ' ').trim()
+  const body = `on ${guestFirst}: "${q.length > 140 ? q.slice(0, 137).trimEnd() + '...' : q}"`
+  const to = pushRecipients(leaders, { leaderIds, crews, authorId })
+  // Direct mentions say "you"; crew-only ones name the crew.
+  const groups = new Map()
+  for (const id of to) {
+    const l = leaders.find(x => x.id === id)
+    const via = direct.has(id) ? 'you' : (crews.map(c => labels[c]).find((_, i) => l.crew === crews[i]) || 'your crew')
+    if (!groups.has(via)) groups.set(via, [])
+    groups.get(via).push(id)
+  }
+  let reached = 0
+  for (const [via, ids] of groups) {
+    const r = await pushToMany(ids, {
+      title: `${author} mentioned ${via}`, body,
+      url: `/people#/person/${personId}`, tag: `mention-${noteId}`,
+    })
+    reached += r.leaders
+  }
+  return { leaders: reached }
+}
+
+async function textDirectly({ personId, authorId, authorName, leaderIds, crews, quote }, leaders, guest) {
   const { to, noPhone } = recipients(leaders, { leaderIds, crews, authorId })
   if (!to.length) return { sent: false, reason: 'nobody-to-text', noPhone }
 
