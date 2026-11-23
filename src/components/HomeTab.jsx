@@ -2,6 +2,7 @@ import usePullToRefresh from './usePullToRefresh.jsx'
 import { useMemo, useState } from 'react'
 import { UserRoundSearch, Hand, Clock, MessageCircleHeart, PartyPopper, RefreshCw } from 'lucide-react'
 import CardRow from './CardRow.jsx'
+import InstallBanner from './InstallBanner.jsx'
 import { CREW_LABEL } from './listMeta.js'
 
 const PREVIEW = 6
@@ -61,6 +62,8 @@ export default function HomeTab({
         <header className="section-head">
           <h1 className="section-title">{greeting()}, {greetName || first}</h1>
         </header>
+
+        <InstallBanner />
 
 
         <div className="stat-grid">
