@@ -200,9 +200,12 @@ svg.lucide { vertical-align: middle; }
 
 /* ── Top bar: YA mark · Home / People · avatar ──────────── */
 .topbar {
-  flex-shrink: 0; position: relative; z-index: 150;
-  /* Solid, no backdrop blur: nothing scrolls behind the bar, and iOS 26
-     home-screen apps rendered the blurred bar's own contents fuzzy. */
+  flex-shrink: 0; z-index: 150;
+  /* iOS 26 home-screen apps blur whatever sits under the status bar unless
+     it's a pinned (sticky/fixed), opaque, full-width header. Sticky here
+     lays out exactly like before (the shell itself doesn't scroll); keep
+     the background solid and don't add backdrop-filter back. */
+  position: sticky; top: 0; left: 0; right: 0; width: 100%;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
   padding: max(10px, env(safe-area-inset-top)) 12px 10px;
