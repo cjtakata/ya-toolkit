@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
-import { Check, LogOut, MessageCircle, Camera, Pencil, ChevronDown, ChevronRight, BookOpen, ChartNoAxesColumn } from 'lucide-react'
+import { Check, LogOut, MessageCircle, Camera, Pencil, ChevronDown, ChevronRight, BookOpen, ChartNoAxesColumn, UsersRound } from 'lucide-react'
 import PickerRow from './PickerRow.jsx'
 import { initialsOf } from './Avatar.jsx'
 import { CREW_OPTIONS, CREW_LABEL } from './listMeta.js'
 import { DEFAULT_MESSAGE, PLACEHOLDERS, renderMessage } from './cardMeta.js'
 
 // Profile: who's signed in, which crew the app focuses on, and sign out.
-export default function ProfileTab({ onOpenHelp, onOpenTeam, user, myCrew = 'all', onChooseCrew, onLogout, onSaveMessage, onSaveProfile }) {
+export default function ProfileTab({ onOpenHelp, onOpenTeam, onOpenCrews, user, myCrew = 'all', onChooseCrew, onLogout, onSaveMessage, onSaveProfile }) {
   const name     = user.global_name || user.username || 'Leader'
   const initials = initialsOf(name)
   const email    = user.username && user.username.includes('@') ? user.username : null
@@ -69,6 +69,12 @@ export default function ProfileTab({ onOpenHelp, onOpenTeam, user, myCrew = 'all
               {onOpenTeam && (
                 <button className="settings-row" onClick={onOpenTeam}>
                   <span className="help-entry"><ChartNoAxesColumn size={17} />Leader reach-outs</span>
+                  <ChevronRight size={16} />
+                </button>
+              )}
+              {onOpenCrews && (
+                <button className="settings-row" onClick={onOpenCrews}>
+                  <span className="help-entry"><UsersRound size={17} />Crew leaders</span>
                   <ChevronRight size={16} />
                 </button>
               )}

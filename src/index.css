@@ -1101,3 +1101,28 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
 .leader-num { font-size: 24px; font-weight: var(--fw-bold); color: var(--text); line-height: 1.1; font-variant-numeric: tabular-nums; }
 .leader-unit { font-size: var(--fs-caption); color: var(--muted); }
 .leader-quiet { font-size: var(--fs-subhead); color: var(--muted); line-height: 1.5; margin: 0; }
+
+/* ── Crew leaders (admin) ────────────────────────────────── */
+.crew-stat-grid { grid-template-columns: 1fr 1fr; }
+.crew-stat-grid .stat { cursor: default; }
+.crew-stat-grid .stat:hover { border-color: var(--border); }
+.stat-sub { font-size: var(--fs-caption); color: var(--muted); }
+.crew-callout {
+  background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--r-lg);
+  padding: 12px 14px; font-size: var(--fs-subhead); color: var(--text); line-height: 1.45;
+}
+.crew-callout p { margin: 0; }
+.crew-callout p + p { margin-top: 6px; }
+.crew-open { font-size: var(--fs-footnote); color: var(--muted); font-weight: var(--fw-semibold); }
+.crew-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--r-lg); padding: 6px 14px 12px; }
+.crew-tr { display: grid; grid-template-columns: 1fr 72px 72px 84px; align-items: center; padding: 8px 0; font-variant-numeric: tabular-nums; }
+.crew-tr + .crew-tr { border-top: 1px solid var(--border); }
+.crew-tr span:not(:first-child) { text-align: right; }
+.crew-th { font-size: var(--fs-caption); font-weight: var(--fw-semibold); color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.crew-tr:not(.crew-th) { font-size: var(--fs-body); color: var(--text); }
+.crew-g { font-weight: var(--fw-semibold); }
+.crew-per { font-weight: var(--fw-bold); }
+.crew-names { display: flex; flex-direction: column; gap: 3px; margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--border);
+  font-size: var(--fs-subhead); color: var(--muted); line-height: 1.4; }
+.crew-names b { color: var(--text); font-weight: var(--fw-semibold); }
+.crew-note { font-size: var(--fs-footnote); }
