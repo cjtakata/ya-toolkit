@@ -24,9 +24,16 @@ export function shortDate(iso) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-// Hours a card has been waiting at its current stage (for "getting old" warnings).
 export function hoursSince(iso) {
   return iso ? (Date.now() - new Date(iso).getTime()) / 3_600_000 : 0
+}
+
+// Overdue = not texted yet, counted from when the card came in.
+//   24h+ → 'late' (amber), 48h+ → 'urgent' (red), otherwise null.
+export function overdueLevel(card) {
+  if (card.state === 'contacted') return null
+  const h = hoursSince(card.submittedAt)
+  return h >= 48 ? 'urgent' : h >= 24 ? 'late' : null
 }
 
 // The text leaders send — prefilled in Messages, still editable before sending.

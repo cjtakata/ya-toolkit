@@ -1,7 +1,8 @@
 import usePullToRefresh from './usePullToRefresh.jsx'
 import { useMemo, useState } from 'react'
-import { UserRoundSearch, Hand, Clock, MessageCircleHeart, PartyPopper, RefreshCw } from 'lucide-react'
+import { UserRoundSearch, Hand, Clock, MessageCircleHeart, PartyPopper, RefreshCw, AlarmClock, ChevronRight } from 'lucide-react'
 import CardRow from './CardRow.jsx'
+import { overdueLevel } from './cardMeta.js'
 import { CREW_LABEL } from './listMeta.js'
 
 const PREVIEW = 6
@@ -41,7 +42,12 @@ export default function HomeTab({
     const mine      = claimed.filter(c => c.claimedBy === currentUser).sort(byOldest('claimedAt'))
     const others    = claimed.filter(c => c.claimedBy !== currentUser).sort(byOldest('claimedAt'))
     const contacted = scoped.filter(c => c.state === 'contacted').sort(byNewest('contactedAt'))
-    return { waiting, mine, others, contacted }
+    const late   = [...waiting, ...mine, ...others].filter(c => overdueLevel(c))
+    const urgent = late.filter(c => overdueLevel(c) === 'urgent').length
+    // Tile jumps to the first section holding an overdue guest.
+    const lateAt = [['home-waiting', waiting], ['home-mine', mine], ['home-others', others]]
+      .find(([, list]) => list.some(c => overdueLevel(c)))?.[0]
+    return { waiting, mine, others, contacted, late: late.length, urgent, lateAt }
   }, [cards, myCrew, currentUser])
 
   const crewLabel = myCrew && myCrew !== 'all' ? CREW_LABEL[myCrew] : 'All crews'
@@ -64,6 +70,19 @@ export default function HomeTab({
 
 
         <div className="stat-grid">
+          {s.late > 0 && (
+            <button className={`stat stat-overdue${s.urgent ? ' stat-overdue-urgent' : ''}`} onClick={() => jump(s.lateAt)}>
+              <AlarmClock size={20} />
+              <span className="stat-overdue-text">
+                <span className="stat-num">{s.late}</span>
+                <span className="stat-label">
+                  {s.late === 1 ? 'guest' : 'guests'} overdue · not texted 24h+ after their card
+                  {s.urgent > 0 && <b> · {s.urgent} over 48h</b>}
+                </span>
+              </span>
+              <ChevronRight size={18} className="stat-overdue-go" />
+            </button>
+          )}
           <button className="stat stat-amber" onClick={() => jump('home-waiting')}>
             <UserRoundSearch size={18} />
             <span className="stat-num">{s.waiting.length}</span>
