@@ -1080,3 +1080,24 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
 .help-fake-input { min-height: 0; padding-right: 12px; }
 .help-shot .mention-quiet { margin: 0; }
 .help-list svg { vertical-align: -2px; }
+
+/* ── Leader reach-outs (admin dashboard) ─────────────────── */
+.team-stats { display: flex; flex-direction: column; gap: 18px; padding-bottom: var(--scroll-end); }
+.team-stat-grid .stat { cursor: default; }
+.team-stat-grid .stat:hover { border-color: var(--border); }
+.team-stat-grid .stat-amber:hover { border-color: var(--amber-line); }
+.range-tabs { display: flex; gap: 4px; padding: 3px; background: var(--border); border-radius: var(--r-md); }
+.range-tab {
+  flex: 1; border: 0; background: transparent; padding: 7px 4px; border-radius: var(--r-sm);
+  font: inherit; font-size: var(--fs-footnote); font-weight: var(--fw-semibold); color: var(--muted); cursor: pointer;
+}
+.range-tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.leader-row, .leader-row:hover { cursor: default; align-items: center; background: none; }
+.leader-row .person-name-row { gap: 6px; flex-wrap: wrap; }
+.leader-sub { font-size: var(--fs-subhead); color: var(--muted); margin-top: 2px; }
+.leader-bar { height: 4px; border-radius: var(--r-pill); background: var(--bg); margin-top: 7px; overflow: hidden; }
+.leader-bar span { display: block; height: 100%; background: var(--green-ink); opacity: .55; border-radius: inherit; }
+.leader-count { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; padding-left: 8px; }
+.leader-num { font-size: 24px; font-weight: var(--fw-bold); color: var(--text); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.leader-unit { font-size: var(--fs-caption); color: var(--muted); }
+.leader-quiet { font-size: var(--fs-subhead); color: var(--muted); line-height: 1.5; margin: 0; }

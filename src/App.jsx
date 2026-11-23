@@ -9,6 +9,7 @@ import { LIST_META } from './components/listMeta.js'
 import HomeTab, { inCrew } from './components/HomeTab.jsx'
 import ProfileTab from './components/ProfileTab.jsx'
 import HelpGuide from './components/HelpGuide.jsx'
+import TeamStats from './components/TeamStats.jsx'
 
 function LoadingScreen({ label, progress }) {
   return (
@@ -49,7 +50,7 @@ function parseHashId() {
   return m ? m[1] : null
 }
 function parseHashTab() {
-  const m = window.location.hash.match(/^#\/(home|search|profile|help)$/)
+  const m = window.location.hash.match(/^#\/(home|search|profile|help|team)$/)
   return m ? m[1] : null
 }
 
@@ -71,10 +72,11 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
   const [preset, setPreset]           = useState(readUrlPreset)
   const [tab, setTab]                 = useState(() => {
     const t = parseHashTab()
-    return TABS.includes(t) ? t : (readUrlPreset() ? 'search' : 'home')   // #/profile and #/help open over Home
+    return TABS.includes(t) ? t : (readUrlPreset() ? 'search' : 'home')   // #/profile, #/help and #/team open over Home
   })
   const [profileOpen, setProfileOpen] = useState(() => parseHashTab() === 'profile')
   const [helpOpen, setHelpOpen]       = useState(() => parseHashTab() === 'help')
+  const [teamOpen, setTeamOpen]       = useState(() => parseHashTab() === 'team')
   const currentUser = user.global_name || user.username || 'Leader'
 
   // The page itself never scrolls while signed in (see html.app-shell in index.css)
@@ -188,12 +190,12 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
   // it); switching tabs just replaces the hash. Query-string filters are dropped
   // once applied so a reload doesn't re-apply them.
   useEffect(() => {
-    const newHash = selectedId ? `#/person/${selectedId}` : helpOpen ? '#/help' : profileOpen ? '#/profile' : `#/${tab}`
+    const newHash = selectedId ? `#/person/${selectedId}` : helpOpen ? '#/help' : teamOpen ? '#/team' : profileOpen ? '#/profile' : `#/${tab}`
     if (window.location.hash === newHash && !window.location.search) return
     const url = window.location.pathname + newHash
     if (selectedId && parseHashId() !== selectedId) history.pushState(null, '', url)
     else history.replaceState(null, '', url)
-  }, [selectedId, tab, profileOpen, helpOpen])
+  }, [selectedId, tab, profileOpen, helpOpen, teamOpen])
 
   // Handle browser back/forward
   useEffect(() => {
@@ -202,7 +204,8 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
       const t = parseHashTab()
       setProfileOpen(t === 'profile')
       setHelpOpen(t === 'help')
-      if (t && t !== 'profile' && t !== 'help') setTab(t)
+      setTeamOpen(t === 'team')
+      if (TABS.includes(t)) setTab(t)
     }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
@@ -359,12 +362,18 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
         </Sheet>
       )}
       <Sheet open={profileOpen} title="Profile" showTitle={false} onClose={() => setProfileOpen(false)}>
-        <ProfileTab onOpenHelp={() => { setProfileOpen(false); setHelpOpen(true) }} user={user} myCrew={myCrew} onChooseCrew={chooseCrew} onLogout={handleLogout}
+        <ProfileTab onOpenHelp={() => { setProfileOpen(false); setHelpOpen(true) }}
+          onOpenTeam={user.isAdmin ? () => { setProfileOpen(false); setTeamOpen(true) } : null} user={user} myCrew={myCrew} onChooseCrew={chooseCrew} onLogout={handleLogout}
           onSaveMessage={textMessage => saveProfile({ textMessage })} onSaveProfile={saveProfile} />
       </Sheet>
       <Sheet open={helpOpen} title="How it works" tall onClose={() => setHelpOpen(false)}>
         <HelpGuide isAdmin={!!user.isAdmin} />
       </Sheet>
+      {user.isAdmin && (
+        <Sheet open={teamOpen} title="Leader reach-outs" tall onClose={() => setTeamOpen(false)}>
+          {teamOpen && <TeamStats leaders={people.filter(p => p.status === 'Leader')} />}
+        </Sheet>
+      )}
     </div>
   )
 }
