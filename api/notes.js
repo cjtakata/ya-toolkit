@@ -131,6 +131,6 @@ export default async function handler(req, res) {
 
   } catch (err) {
     console.error('notes.js error:', err)
-    return res.status(500).json({ error: 'Failed to reach PCO notes', detail: err.message })
+    return res.status(500).json({ error: "Couldn't reach Planning Center notes. Try again." })
   }
 }

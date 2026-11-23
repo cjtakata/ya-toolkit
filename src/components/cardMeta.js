@@ -1,11 +1,5 @@
 // Helpers for connection-card follow-ups (PCO workflow cards; see api/_lib/cards.js).
 
-export const CARD_STATES = {
-  waiting:   { label: 'Not claimed', cls: 'cardchip-waiting' },
-  claimed:   { label: 'Claimed',     cls: 'cardchip-claimed' },
-  contacted: { label: 'Texted',      cls: 'cardchip-contacted' },
-}
-
 export function timeAgo(iso) {
   if (!iso) return ''
   const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000))

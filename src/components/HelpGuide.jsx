@@ -61,23 +61,32 @@ const HomeShot = () => (
     <div className="stat-grid help-stat-grid">
       <div className="stat stat-amber"><UserRoundSearch size={18} /><span className="stat-num">2</span><span className="stat-label">Not claimed</span></div>
       <div className="stat stat-indigo"><Hand size={18} /><span className="stat-num">1</span><span className="stat-label">Yours to text</span></div>
-      <div className="stat"><Clock size={18} /><span className="stat-num">3</span><span className="stat-label">Claimed, not texted</span></div>
+      <div className="stat"><Clock size={18} /><span className="stat-num">3</span><span className="stat-label">Claimed by others</span></div>
       <div className="stat stat-green"><MessageCircleHeart size={18} /><span className="stat-num">5</span><span className="stat-label">Texted · 30 days</span></div>
     </div>
   </Shot>
 )
 const SmsShot = () => (
-  <Shot caption="What a new-guest text looks like">
+  <Shot caption="Texts from the YA line: a new guest, and an @mention">
     <div className="help-sms">
       <div className="help-sms-from">Venture YA</div>
       <div className="help-sms-bubble">YA New Guest: Jordan Rivera (College Life) filled out a card. Claim &amp; text them: ya-toolkit.vercel.app/p/…</div>
+      <div className="help-sms-bubble">YA Mention: Chris mentioned you on Jordan: "Can you grab coffee with him this week?" ya-toolkit.vercel.app/p/…</div>
     </div>
+  </Shot>
+)
+const MentionShot = () => (
+  <Shot caption="Type @ in a note to pick a leader or a whole crew">
+    <div className="note-compose help-compose">
+      <div className="note-compose-input help-fake-input">Can <span className="mention">@Early Career</span> help Jordan find a crew?</div>
+    </div>
+    <div className="mention-quiet"><span>Quiet hours (9pm–8am): mention notifications go out at 8am.</span><span className="mention-quiet-toggle"><input type="checkbox" readOnly tabIndex={-1} /> Send now</span></div>
   </Shot>
 )
 const HOME_ROWS = [
   ['Not claimed', 'New connection cards no leader has taken yet', 'Claim the ones in your crew'],
   ['Yours to text', "Guests you claimed but haven't marked as texted", 'Text them, then confirm in the app'],
-  ['Claimed, not texted', "Guests other leaders claimed and haven't texted yet", "Nothing, unless they've waited a while"],
+  ['Claimed by others', "Guests another leader claimed and hasn't texted yet", "Nothing, unless they've waited a while. Nudge them with an @mention"],
   ['Texted · 30 days', 'Guests a leader contacted in the last 30 days', 'Nothing. This is the win column'],
 ]
 
@@ -101,13 +110,20 @@ function ShareGuide() {
   )
 }
 
-export default function HelpGuide() {
+const STATUS_ROWS = [
+  ['Active', 'Coming around and getting connected'],
+  ['Serving', 'On a YA team'],
+  ['Leader', 'A YA leader: can sign in to this app (admins set this)'],
+  ['Archived', "Moved on or no longer connected. Hidden from lists, but nothing's deleted"],
+]
+
+export default function HelpGuide({ isAdmin = false }) {
   return (
     <div className="help-guide">
       <ShareGuide />
       <p className="help-lead">
         When a young adult fills out a connection card, a leader from their crew claims them here,
-        texts them, and marks it done, ideally within a day.
+        texts them, and marks it done, ideally within a day. Notes and @mentions keep everyone in the loop.
       </p>
 
       <section className="home-section">
@@ -117,9 +133,20 @@ export default function HelpGuide() {
           <li>Open the guest and tap <b>Claim</b>. The card turns purple: <b>Claimed by you</b>. Can't follow up after all? Tap <b>Release</b>.<ClaimShot /></li>
           <li>Tap <b>Text</b>. Messages opens with your saved message filled in. Tweak it and send. Already texted them from your own phone? Tap <b>Mark as texted</b> instead.<TextShot /></li>
           <li>Back here, answer <b>Did you send the text?</b> with <b>Yes, I sent it</b>. The card turns green.<ConfirmShot /></li>
-          <li>Add a note under <b>Notes &amp; History</b> so other leaders know how it went.</li>
+          <li>Add a note under <b>Notes &amp; history</b> so other leaders know how it went.</li>
         </ol>
         <p className="profile-hint help-after">No phone number on file? Reach them another way, then tap <b>Mark as contacted</b>.</p>
+      </section>
+
+      <section className="home-section">
+        <div className="home-section-head"><h2>Notes and @mentions</h2></div>
+        <MentionShot />
+        <ul className="help-card help-list">
+          <li><b>Notes</b> live on the guest in Planning Center (under Young Adults), so every YA leader and staff member with access sees them. Keep them kind and factual.</li>
+          <li>Type <b>@</b> to mention a leader (<b>@Vinny Diaz</b>) or a whole crew (<b>@College Life</b>). Each person gets a <b>YA Mention</b> text with your note and a link to the guest. You won't get a text for your own note.</li>
+          <li>Use it to hand off ("@Chris can you take this one?"), ask for help, or loop in a crew.</li>
+          <li><b>Quiet hours:</b> mentions written between 9pm and 8am are held and sent at 8am. Need it now? Tick <b>Send now</b> under the note before posting.</li>
+        </ul>
       </section>
 
       <section className="home-section">
@@ -147,6 +174,11 @@ export default function HelpGuide() {
             <div className="help-row-todo">Tap the link and claim them</div>
           </div>
           <div className="help-row">
+            <div className="help-row-name">YA Mention</div>
+            <div className="help-row-text">Another leader @mentioned you, or your crew, in a note.</div>
+            <div className="help-row-todo">Tap the link to read it and reply with a note</div>
+          </div>
+          <div className="help-row">
             <div className="help-row-name">YA Follow-Up</div>
             <div className="help-row-text">9am daily, if a guest in your crew is still unclaimed, or you claimed someone and haven't marked them texted.</div>
             <div className="help-row-todo">Follow up, then mark it here</div>
@@ -159,14 +191,44 @@ export default function HelpGuide() {
       </section>
 
       <section className="home-section">
+        <div className="home-section-head"><h2>YA Status and Crew</h2></div>
+        <div className="help-card help-rows">
+          {STATUS_ROWS.map(([name, means]) => (
+            <div className="help-row help-row-2" key={name}>
+              <div className="help-row-name">{name}</div>
+              <div className="help-row-text">{means}</div>
+            </div>
+          ))}
+        </div>
+        <p className="profile-hint help-after">
+          Change either one on a guest's page; it saves straight to Planning Center. A guest's <b>Crew</b> decides which
+          leaders get texted about them, so fix it if it's wrong.
+        </p>
+      </section>
+
+      <section className="home-section">
         <div className="home-section-head"><h2>Good to know</h2></div>
         <ul className="help-card help-list">
-          <li><b>Your profile:</b> add a photo and nickname, pick your crew (Home and People focus on it), and edit the text message you send guests.</li>
-          <li><b>A guest's page:</b> change their YA Status or Crew there; it saves to Planning Center. <b>Copy Link</b> shares them with another leader.</li>
-          <li><b>People tab:</b> the full YA list, with search and filters.</li>
-          <li><b>Can't sign in?</b> Use the exact email on your Planning Center profile, and check spam for the code.</li>
+          <li><b>Put it on your home screen:</b> in Safari, tap <Share size={13} /> Share, then <b>Add to Home Screen</b>. It opens like an app and stays signed in for 30 days.</li>
+          <li><b>Your profile</b> (your initials, top right): add a photo and nickname, pick your crew (Home and People focus on it), and edit the text message you send guests.</li>
+          <li><b>People tab:</b> the full YA list, with search and filters. Archived people are hidden unless you filter for them.</li>
+          <li><b>Copy Link</b> on a guest's page gives you a link to send another leader.</li>
+          <li><b>What gets saved when you text?</b> Only that you texted and when. Your message itself stays on your phone.</li>
+          <li><b>Pull down</b> on Home or People to refresh.</li>
+          <li><b>Can't sign in?</b> Use the exact email on your Planning Center profile, and check spam for the code. Only people marked <b>Leader</b> can sign in.</li>
         </ul>
       </section>
+
+      {isAdmin && (
+        <section className="home-section">
+          <div className="home-section-head"><h2>For admins</h2></div>
+          <ul className="help-card help-list">
+            <li><b>Assign or reassign</b> a guest to any leader from the Admin box on their page. It counts as that leader's claim.</li>
+            <li><b>Release</b> another leader's claim, or <b>Remove from follow-up</b> for someone who shouldn't be in it (their profile and notes stay).</li>
+            <li><b>Leader status</b> gives someone access to this app, so only admins can set or remove it.</li>
+          </ul>
+        </section>
+      )}
     </div>
   )
 }

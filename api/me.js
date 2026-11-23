@@ -1,5 +1,6 @@
 import { requireAuth, isAdmin } from './_lib/auth.js'
-import { pcoFetch } from './_lib/pco.js'
+import { pcoFetch, getDatum, setDatum, authHeader, FIELD } from './_lib/pco.js'
+import { realAvatar } from './_lib/person.js'
 
 // The signed-in leader, plus their personal text-message template.
 //   GET  /api/me                      → { id, username, global_name, nickname, avatar, crews, textMessage, isAdmin }
@@ -11,14 +12,9 @@ import { pcoFetch } from './_lib/pco.js'
 //
 // The template lives on the leader's OWN PCO profile ("YA Text Message", YA Details
 // tab), so it follows them across devices. A leader can only change their own.
-const TEXT_MESSAGE_DEF = '1151583'
-const NICKNAME_DEF     = '1151595'   // "YA Nickname" (YA Details tab) — app-only
 const MAX_LEN = 1000
 const NICKNAME_MAX = 40
 const PHOTO_MAX_BYTES = 2_500_000
-
-// PCO's generated "initials" image isn't a real photo — treat it as none
-const realAvatar = url => (url && !/\/uploads\/initials\//.test(url) ? url : null)
 
 async function getPerson(personId) {
   const { data } = await pcoFetch(`/people/v2/people/${personId}`)
@@ -42,9 +38,8 @@ async function uploadPhoto(personId, dataUrl) {
   if (bytes.length > PHOTO_MAX_BYTES) throw Object.assign(new Error('Photo is too large'), { status: 413 })
   const form = new FormData()
   form.append('file', new Blob([bytes], { type: m[1] }), `avatar.${m[1].split('/')[1]}`)
-  const creds = Buffer.from(`${process.env.PCO_APP_ID}:${process.env.PCO_SECRET}`).toString('base64')
   const up = await fetch('https://upload.planningcenteronline.com/v2/files', {
-    method: 'POST', headers: { Authorization: `Basic ${creds}` }, body: form,
+    method: 'POST', headers: { Authorization: authHeader() }, body: form,
   })
   if (!up.ok) throw new Error(`PCO upload ${up.status}: ${(await up.text()).slice(0, 200)}`)
   const file = (await up.json()).data
@@ -52,37 +47,6 @@ async function uploadPhoto(personId, dataUrl) {
   if (!fileId) throw new Error('PCO upload returned no file id')
   const attrs = await setPerson(personId, { avatar: fileId })
   return realAvatar(attrs.avatar)
-}
-
-async function findDatum(personId, defId = TEXT_MESSAGE_DEF) {
-  const { data } = await pcoFetch(
-    `/people/v2/people/${personId}/field_data?where%5Bfield_definition_id%5D=${defId}&per_page=1`
-  )
-  return data?.[0] || null
-}
-
-// Create / update / clear one custom-field value on the leader's own profile
-async function setDatum(personId, defId, value) {
-  const existing = await findDatum(personId, defId)
-  if (!value) {
-    if (existing) await pcoFetch(`/people/v2/field_data/${existing.id}`, { method: 'DELETE' }).catch(() => {})
-  } else if (existing) {
-    await pcoFetch(`/people/v2/field_data/${existing.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ data: { type: 'FieldDatum', id: existing.id, attributes: { value } } }),
-    })
-  } else {
-    await pcoFetch(`/people/v2/people/${personId}/field_data`, {
-      method: 'POST',
-      body: JSON.stringify({
-        data: {
-          type: 'FieldDatum',
-          attributes: { value },
-          relationships: { field_definition: { data: { type: 'FieldDefinition', id: defId } } },
-        },
-      }),
-    })
-  }
 }
 
 export default async function handler(req, res) {
@@ -105,7 +69,7 @@ export default async function handler(req, res) {
     const nickname = String(req.body.nickname || '').trim().replace(/\s+/g, ' ')
     if (nickname.length > NICKNAME_MAX) return res.status(422).json({ error: `Keep it under ${NICKNAME_MAX} characters` })
     try {
-      await setDatum(personId, NICKNAME_DEF, nickname)
+      await setDatum(personId, FIELD.nickname, nickname)
       return res.json({ ok: true, nickname })
     } catch (err) {
       console.error('me.js nickname error:', err.message)
@@ -118,7 +82,7 @@ export default async function handler(req, res) {
     const text = String(req.body?.textMessage ?? '').trim()
     if (text.length > MAX_LEN) return res.status(422).json({ error: `Keep it under ${MAX_LEN} characters` })
     try {
-      await setDatum(personId, TEXT_MESSAGE_DEF, text)
+      await setDatum(personId, FIELD.textMessage, text)
       return res.json({ ok: true, textMessage: text })
     } catch (err) {
       console.error('me.js save error:', err)
@@ -126,11 +90,11 @@ export default async function handler(req, res) {
     }
   }
 
-  let textMessage = '', nickname = '', avatar = user.avatar || null
+  let textMessage = '', nickname = '', avatar = null
   if (isPcoId) {
     const [datum, nick, person] = await Promise.all([
-      findDatum(personId).catch(err => { console.error('me.js read error:', err.message); return null }),
-      findDatum(personId, NICKNAME_DEF).catch(() => null),
+      getDatum(personId, FIELD.textMessage).catch(err => { console.error('me.js read error:', err.message); return null }),
+      getDatum(personId, FIELD.nickname).catch(() => null),
       getPerson(personId).catch(err => { console.error('me.js person error:', err.message); return {} }),
     ])
     textMessage = datum?.attributes?.value || ''

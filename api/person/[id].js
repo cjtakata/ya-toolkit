@@ -1,136 +1,51 @@
-import { requireAuth } from '../_lib/auth.js'
-import { pcoFetch, getFieldDefinitions, getFieldOptions } from '../_lib/pco.js'
+import { requireAuth, isAdmin } from '../_lib/auth.js'
+import { getDatum, setDatum, getFieldOptions, FIELD } from '../_lib/pco.js'
 
-const FIELD_ENV_MAP = {
-  crew:            'PCO_FIELD_CREW',
-  notes:           'PCO_FIELD_NOTES',
-  status:          'PCO_FIELD_STATUS',
-}
-
-// Hardcoded allowlist: the PCO field-definition ID each writable key resolves
-// to MUST be one of these. A misconfigured env var can therefore never
-// redirect a write to a different field on the profile.
-const EXPECTED_FIELD_IDS = {
-  crew:            '431524',
-  notes:           '1065428',
-  status:          '1065431',
-}
-
-// Select-type fields whose submitted value must match a live PCO option.
-const SELECT_FIELDS = { crew: '431524', status: '1065431' }
-
-const NOTES_MAX = 5000
+// PATCH /api/person/:id { fields: { crew?, status? } } → saves YA Details to PCO.
+//
+// Only Crew and YA Status are writable, each only to its own field, and only
+// to a value PCO lists as an option (or empty). The field record to change is
+// looked up here, never taken from the browser. YA Status "Leader" grants
+// access to this app, so only admins can give it or take it away.
+const WRITABLE = { crew: FIELD.crew, status: FIELD.status }
 
 export default async function handler(req, res) {
   const user = await requireAuth(req, res)
   if (!user) return
+  if (req.method !== 'PATCH') return res.status(405).json({ error: 'Method not allowed' })
 
-  const { id } = req.query
+  const id = String(req.query.id || '')
+  if (!/^\d+$/.test(id)) return res.status(400).json({ error: 'Invalid person id' })
 
-  if (req.method !== 'PATCH') {
-    return res.status(405).json({ error: 'Method not allowed' })
-  }
-  if (!/^\d+$/.test(String(id))) {
-    return res.status(400).json({ error: 'Invalid person id' })
-  }
+  const fields = req.body?.fields
+  const keys = fields && typeof fields === 'object' ? Object.keys(fields).filter(k => k in WRITABLE) : []
+  if (!keys.length) return res.status(400).json({ error: 'Nothing to save' })
 
   try {
-    const { fields, fieldDataIds } = req.body || {}
-
-    if (!fields || typeof fields !== 'object' || Array.isArray(fields)) {
-      return res.status(400).json({ error: 'Missing fields' })
-    }
-
-    // Only the three known keys are ever writable.
-    const keys = Object.keys(fields).filter(k => k in FIELD_ENV_MAP)
-    if (keys.length === 0) {
-      return res.status(400).json({ error: 'No writable fields provided' })
-    }
-
-    const fieldDefs = await getFieldDefinitions()
-
-    // ── Value validation ──────────────────────────────────────────
     for (const key of keys) {
-      if (!(key in SELECT_FIELDS)) continue
-      const val = fields[key]
-      if (typeof val !== 'string') {
-        return res.status(422).json({ error: `Invalid ${key}`, detail: `${key} must be text.` })
-      }
-      if (val !== '') {
-        const options = await getFieldOptions(SELECT_FIELDS[key])
-        if (!options.includes(val)) {
-          return res.status(422).json({
-            error: `Invalid ${key}`,
-            detail: `${key} must be one of: ${options.join(', ')} (or empty).`,
-          })
-        }
-      }
-    }
-    if (keys.includes('notes')) {
-      const notes = fields.notes
-      if (typeof notes !== 'string') {
-        return res.status(422).json({ error: 'Invalid notes', detail: 'Notes must be text.' })
-      }
-      if (notes.length > NOTES_MAX) {
-        return res.status(422).json({ error: 'Notes too long', detail: `Max ${NOTES_MAX} characters.` })
+      const value = fields[key]
+      if (typeof value !== 'string') return res.status(422).json({ error: `${key} must be text` })
+      if (value && !(await getFieldOptions(WRITABLE[key])).includes(value)) {
+        return res.status(422).json({ error: `"${value}" isn't a ${key === 'crew' ? 'Crew' : 'YA Status'} option in Planning Center` })
       }
     }
 
-    // ── Write (only the fields actually provided) ─────────────────
-    const written        = {}
-    const updatedDataIds = { ...(fieldDataIds || {}) }
+    if (keys.includes('status')) {
+      const current = (await getDatum(id, FIELD.status))?.attributes?.value || ''
+      const touchesLeader = (current === 'Leader') !== (fields.status === 'Leader')
+      if (touchesLeader && !isAdmin(user)) {
+        return res.status(403).json({ error: 'Only YA admins can make someone a Leader or remove Leader status.' })
+      }
+    }
 
+    const saved = {}
     for (const key of keys) {
-      const fieldName = process.env[FIELD_ENV_MAP[key]]
-      const defId     = fieldName ? fieldDefs[fieldName] : null
-
-      if (!defId) {
-        return res.status(500).json({ error: 'Field not configured', detail: `Missing PCO field for ${key}` })
-      }
-      if (defId !== EXPECTED_FIELD_IDS[key]) {
-        return res.status(500).json({
-          error: 'Field mismatch',
-          detail: `Refusing write: "${key}" resolved to unexpected field ${defId}`,
-        })
-      }
-
-      const rawValue   = String(fields[key] ?? '')
-      const existingId = fieldDataIds?.[key]
-
-      if (existingId) {
-        // Update via the TOP-LEVEL field_data endpoint. The nested
-        // /people/{id}/field_data/{id} PATCH mishandles select fields and
-        // 422s with a spurious "field datum already exists" error; the
-        // top-level endpoint updates the value cleanly for all field types.
-        await pcoFetch(`/people/v2/field_data/${existingId}`, {
-          method: 'PATCH',
-          body: JSON.stringify({
-            data: { type: 'FieldDatum', id: existingId, attributes: { value: rawValue } },
-          }),
-        })
-        written[key]        = fields[key]
-        updatedDataIds[key] = existingId
-      } else {
-        const created = await pcoFetch(`/people/v2/people/${id}/field_data`, {
-          method: 'POST',
-          body: JSON.stringify({
-            data: {
-              type: 'FieldDatum',
-              attributes: { value: rawValue },
-              relationships: {
-                field_definition: { data: { type: 'FieldDefinition', id: defId } },
-              },
-            },
-          }),
-        })
-        written[key]        = fields[key]
-        updatedDataIds[key] = created.data.id
-      }
+      await setDatum(id, WRITABLE[key], fields[key])
+      saved[key] = fields[key]
     }
-
-    res.json({ id, ...written, _fieldDataIds: updatedDataIds })
+    res.json({ id, ...saved })
   } catch (err) {
     console.error(`person/${id} PATCH error:`, err)
-    res.status(500).json({ error: 'Failed to save to PCO', detail: err.message })
+    res.status(500).json({ error: "Couldn't save to Planning Center. Try again." })
   }
 }

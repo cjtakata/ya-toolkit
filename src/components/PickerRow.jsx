@@ -3,7 +3,8 @@ import { Check, ChevronsUpDown } from 'lucide-react'
 
 // A settings-style row (label · value ⌄) that opens the app's own menu card
 // right under it — instead of the browser's native select.
-export default function PickerRow({ label, value, options, onChange, emptyLabel = 'Not set', allowEmpty = true }) {
+// disabled: shows the value without the menu (e.g. a field only admins can change)
+export default function PickerRow({ label, value, options, onChange, emptyLabel = 'Not set', allowEmpty = true, disabled = false, note = '' }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -28,11 +29,12 @@ export default function PickerRow({ label, value, options, onChange, emptyLabel 
 
   return (
     <div className={`picker-row${open ? ' open' : ''}`} ref={ref}>
-      <button type="button" className="picker-trigger" onClick={() => setOpen(o => !o)}
+      <button type="button" className="picker-trigger" onClick={() => setOpen(o => !o)} disabled={disabled}
         aria-haspopup="listbox" aria-expanded={open}>
         <span className="picker-label">{label}</span>
         <span className={`picker-value${shown ? '' : ' empty'}`}>
-          <span className="picker-value-text">{shown || emptyLabel}</span><ChevronsUpDown size={15} />
+          <span className="picker-value-text">{shown || emptyLabel}</span>
+          {disabled ? note && <span className="picker-note">{note}</span> : <ChevronsUpDown size={15} />}
         </span>
       </button>
       {open && (

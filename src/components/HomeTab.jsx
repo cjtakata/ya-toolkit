@@ -22,8 +22,8 @@ const byNewest = key => (a, b) => (b[key] || '').localeCompare(a[key] || '')
 // Home: connection-card follow-up for the leader's crew.
 //   Who filled out a card → who claimed them → have they been texted?
 export default function HomeTab({
-  greetName, cards, cardsError, cardsLoading, onRefresh, people, myCrew = 'all', currentUser,
-  selectedId, onSelect, onSeeAll, onChangeCrew, onClaim, busyCard, onPullRefresh,
+  greetName, cards, cardsError, cardsLoading, onRefresh, myCrew = 'all', currentUser,
+  selectedId, onSelect, onSeeAll, onClaim, busyCard, onPullRefresh,
 }) {
   const ptr = usePullToRefresh(onPullRefresh)
   const [showAllDone, setShowAllDone] = useState(false)
@@ -41,7 +41,7 @@ export default function HomeTab({
     const mine      = claimed.filter(c => c.claimedBy === currentUser).sort(byOldest('claimedAt'))
     const others    = claimed.filter(c => c.claimedBy !== currentUser).sort(byOldest('claimedAt'))
     const contacted = scoped.filter(c => c.state === 'contacted').sort(byNewest('contactedAt'))
-    return { waiting, claimed, mine, others, contacted }
+    return { waiting, mine, others, contacted }
   }, [cards, myCrew, currentUser])
 
   const crewLabel = myCrew && myCrew !== 'all' ? CREW_LABEL[myCrew] : 'All crews'
@@ -76,8 +76,8 @@ export default function HomeTab({
           </button>
           <button className="stat" onClick={() => jump('home-others')}>
             <Clock size={18} />
-            <span className="stat-num">{s.claimed.length}</span>
-            <span className="stat-label">Claimed, not texted</span>
+            <span className="stat-num">{s.others.length}</span>
+            <span className="stat-label">Claimed by others</span>
           </button>
           <button className="stat stat-green" onClick={() => jump('home-done')}>
             <MessageCircleHeart size={18} />
@@ -129,12 +129,14 @@ export default function HomeTab({
           )}
         </section>
 
-        {s.others.length > 0 && (
-          <section className="home-section" id="home-others">
-            <div className="home-section-head"><h2>Claimed by others · not texted yet</h2></div>
+        <section className="home-section" id="home-others">
+          <div className="home-section-head"><h2>Claimed by others · not texted yet</h2></div>
+          {s.others.length === 0 ? (
+            <div className="home-empty home-empty-quiet"><div><span>No guests waiting on another leader.</span></div></div>
+          ) : (
             <div className="home-list">{s.others.map(row)}</div>
-          </section>
-        )}
+          )}
+        </section>
 
         <section className="home-section" id="home-done">
           <div className="home-section-head">

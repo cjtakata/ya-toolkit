@@ -38,7 +38,7 @@ export default function CardRow({ card, currentUser, selected, onOpen, onClaim, 
         </button>
       )}
       {card.state === 'claimed' && mine && <span className="owner-chip owner-chip-mine">Yours</span>}
-      {card.state === 'contacted' && <span className="owner-chip owner-chip-done">✓</span>}
+      {card.state === 'contacted' && <span className="owner-chip owner-chip-done">Texted</span>}
     </div>
   )
 }

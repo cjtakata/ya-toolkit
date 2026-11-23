@@ -1,13 +1,14 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react'
 import { Check, Link2, ChevronLeft, ExternalLink, Flag, UserCheck, User, MessageCircle, Inbox, Hand, Undo2, CircleCheck, CircleMinus, Workflow, ShieldCheck } from 'lucide-react'
 import { LIST_META } from './listMeta.js'
+import { statusClass } from './statusMeta.js'
 import PickerRow from './PickerRow.jsx'
-import Avatar from './Avatar.jsx'
+import Avatar, { initialsOf } from './Avatar.jsx'
 import { timeAgo, duration, shortDate, renderMessage, smsHref } from './cardMeta.js'
 import { mentionTargets, activeQuery, matchTargets, mentionsInText, splitMentions, inQuietHours } from './mentions.js'
 
 const CREW_FALLBACK   = ['College Life', 'Early Career', 'Young Professional']
-const STATUS_FALLBACK = ['First Time Guest', 'Active', 'Missing', 'Friend', 'Alumni', 'Moved On']
+const STATUS_FALLBACK = ['Active', 'Serving', 'Leader', 'Archived']
 
 // Format a US 10-digit number as (xxx)xxx-xxxx; leave anything else as-is.
 function formatPhone(raw) {
@@ -18,17 +19,12 @@ function formatPhone(raw) {
   return raw
 }
 
-const NOTE_PALETTE = [
-  '#6366f1','#0ea5e9','#ec4899','#f59e0b','#10b981',
-  '#8b5cf6','#ef4444','#14b8a6','#f97316','#84cc16','#a855f7','#3b82f6',
-]
-function authorColor(name) {
+// Each note author gets a steady color for their initials
+const NOTE_PALETTE = ['#6366f1', '#0ea5e9', '#ec4899', '#f59e0b', '#10b981', '#8b5cf6', '#14b8a6', '#f97316']
+function authorColor(name = 'Leader') {
   let hash = 0
-  for (const c of (name || 'Leader')) hash = (hash << 5) - hash + c.charCodeAt(0)
+  for (const c of name) hash = (hash << 5) - hash + c.charCodeAt(0)
   return NOTE_PALETTE[Math.abs(hash) % NOTE_PALETTE.length]
-}
-function authorInitials(name) {
-  return (name || 'Leader').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 }
 function formatNoteDate(iso) {
   if (!iso) return ''
@@ -208,17 +204,14 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
     setSaved(false)
     setSaving(true)
     try {
-      await onSave(person.id, {
-        fields:       { [field]: value },
-        fieldDataIds: person._fieldDataIds || {},
-      })
+      await onSave(person.id, { fields: { [field]: value } })
       setSaving(false)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (err) {
       setDraft(d => ({ ...d, [field]: prev }))   // revert on failure
       setSaving(false)
-      alert(`Couldn't save to PCO:\n\n${err.message}`)
+      alert(err.message)
     }
   }
 
@@ -245,11 +238,17 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
                     {person.email}
                   </a>
                 : <div className="detail-email">No email on file</div>}
+              {(person.status || person.list !== 'unassigned') && (
+                <div className="person-chips detail-chips">
+                  {person.status && <span className={`badge ${statusClass(person.status)}`}>{person.status}</span>}
+                  {person.list !== 'unassigned' && <span className={`badge ${lm.badgeCls}`}>{lm.crew}</span>}
+                </div>
+              )}
             </div>
           </div>
           {isSheet && <button className="sheet-done-inline detail-done" onClick={onClose}>Done</button>}
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="detail-actions">
           <a
             className="pco-link"
             href={`https://people.planningcenteronline.com/people/AC${person.id}`}
@@ -261,7 +260,6 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
           <button className={`copy-link-btn${copied ? ' copied' : ''}`} onClick={handleCopyLink} title="Copy link to this profile">
             {copied ? <><Check size={13} />Copied</> : <><Link2 size={13} />Copy Link</>}
           </button>
-          {person.list !== 'unassigned' && <span className={`badge ${lm.badgeCls}`}>{lm.crew}</span>}
         </div>
       </div>
 
@@ -283,7 +281,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
               <div className="info-item-value">{person.age ?? '—'}</div>
             </div>
             <div className="info-item">
-              <div className="info-item-label">Member since</div>
+              <div className="info-item-label">In PCO since</div>
               <div className="info-item-value">{person.since || '—'}</div>
             </div>
             <div className="info-item">
@@ -315,11 +313,18 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
           </div>
 
           <div className="picker-group">
-            <PickerRow label="YA Status" value={draft.status} options={statusChoices}
+            {/* Leader status grants access to this app, so only admins can give or remove it */}
+            <PickerRow label="YA Status" value={draft.status}
+              options={isAdmin ? statusChoices : statusChoices.filter(s => s !== 'Leader')}
+              disabled={!isAdmin && draft.status === 'Leader'} note="Admins only"
               emptyLabel="Not set" onChange={v => update('status', v)} />
             <PickerRow label="Crew" value={draft.crew} options={crewChoices}
               emptyLabel="Not assigned" onChange={v => update('crew', v)} />
           </div>
+          <p className="profile-hint detail-hint">
+            <b>Active</b> getting connected · <b>Serving</b> on a team · <b>Leader</b> can use this app · <b>Archived</b> hidden from lists.
+            Crew decides which leaders get texted about them.
+          </p>
         </div>
 
         {/* Comment-style notes → PCO Notes under "Young Adults" */}
@@ -523,32 +528,28 @@ function AdminCardTools({ card, person, leaders, currentUser, busy, onAction }) 
   return (
     <div className="fu-card fu-admin">
       <div className="fu-admin-label"><ShieldCheck size={14} /> Admin</div>
-      {open && (
-        <div className="fu-admin-row">
-          {/* Same picker as YA Status / Crew, not the browser's own dropdown */}
-          <div className="picker-group fu-admin-picker">
-            <PickerRow label={card.state === 'claimed' ? 'Reassign to' : 'Assign to'}
-              value={choiceLabel(choices.find(l => String(l.id) === String(leaderId)))}
-              options={choices.map(choiceLabel)} emptyLabel="Choose" allowEmpty={false}
-              onChange={label => setLeaderId(choices.find(l => choiceLabel(l) === label)?.id ?? '')} />
-          </div>
-          <button className="fu-btn-takeover" disabled={busy || !leaderId}
-            onClick={() => onAction('assign', { leaderId }).then(() => setLeaderId(''))}>
-            {busy ? '…' : 'Assign'}
-          </button>
+      <div className="fu-admin-row">
+        {/* Same picker as YA Status / Crew, not the browser's own dropdown */}
+        <div className="picker-group fu-admin-picker">
+          <PickerRow label={card.state === 'claimed' ? 'Reassign to' : 'Assign to'}
+            value={choiceLabel(choices.find(l => String(l.id) === String(leaderId)))}
+            options={choices.map(choiceLabel)} emptyLabel="Choose" allowEmpty={false}
+            onChange={label => setLeaderId(choices.find(l => choiceLabel(l) === label)?.id ?? '')} />
         </div>
-      )}
+        <button className="fu-btn-takeover" disabled={busy || !leaderId}
+          onClick={() => onAction('assign', { leaderId }).then(() => setLeaderId(''))}>
+          {busy ? '…' : 'Assign'}
+        </button>
+      </div>
       <div className="fu-admin-row">
         {card.state === 'claimed' && card.claimedBy && card.claimedBy !== currentUser && (
           <button className="fu-inline-link" onClick={() => onAction('release')} disabled={busy}>
             Release {card.claimedBy.split(' ')[0]}'s claim
           </button>
         )}
-        {open && (
-          <button className="fu-inline-link fu-link-danger" onClick={() => setConfirmRemove(true)} disabled={busy}>
-            Remove from follow-up
-          </button>
-        )}
+        <button className="fu-inline-link fu-link-danger" onClick={() => setConfirmRemove(true)} disabled={busy}>
+          Remove from follow-up
+        </button>
       </div>
     </div>
   )
@@ -566,7 +567,7 @@ function NoteItem({ note: n, currentUser, targets = [] }) {
     <div className="hist-item hist-note">
       {n.followup
         ? <span className="hist-icon hist-icon-fu"><Check size={14} strokeWidth={3} /></span>
-        : <span className="hist-icon hist-icon-author" style={{ background: authorColor(n.author) }}>{authorInitials(n.author)}</span>}
+        : <span className="hist-icon hist-icon-author" style={{ background: authorColor(n.author) }}>{initialsOf(n.author || 'Leader')}</span>}
       <span className="hist-text">
         <strong>{who}</strong>{n.followup ? ' followed up' : ''}: {splitMentions(n.body, targets).map((part, i) => part.target
           ? <span key={i} className={`mention${part.target.type === 'leader' && part.target.label === currentUser ? ' mention-me' : ''}`}>{part.text}</span>
