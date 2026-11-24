@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Bell, BellOff, AtSign, UserPlus, RefreshCw, Smartphone, X } from 'lucide-react'
+import { Bell, BellOff, AtSign, UserPlus, RefreshCw, Smartphone, X, TriangleAlert } from 'lucide-react'
 import Avatar from './Avatar.jsx'
 import { LIST_META } from './listMeta.js'
 import { stamp } from './teamStats.js'
@@ -10,6 +10,7 @@ const KIND = {
   mention:  { Icon: AtSign,   label: 'Mention' },
   newguest: { Icon: UserPlus, label: 'New guest' },
   test:     { Icon: Bell,     label: 'Test' },
+  alert:    { Icon: TriangleAlert, label: 'Needs a card' },
 }
 const RESULT = {
   push: {

@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
-import { routeNewCard } from './_lib/routing.js'
+import { routeNewCard, alertMissingCard } from './_lib/routing.js'
 import { recordVisit } from './_lib/visits.js'
 import { storeReady } from './_lib/push.js'
 
@@ -17,7 +17,9 @@ import { storeReady } from './_lib/push.js'
 // The same URL also takes check-ins from the YA Connect kiosk (ya-connect
 // project): X-YA-Checkin-Signature = HMAC-SHA256 of the raw body with
 // CHECKIN_SYNC_KEY (set to the same value in both Vercel projects).
-// Body: { personId, date: "yyyy-mm-dd", at: ISO time }. See _lib/visits.js.
+// Body: { personId, date: "yyyy-mm-dd", at: ISO time }: a visit (_lib/visits.js), or
+//       { type: 'card-alert', personId, name, at }: the connection card couldn't add a
+//       follow-up card, so the admins are told (_lib/routing.js alertMissingCard).
 
 export const config = { maxDuration: 30, api: { bodyParser: false } }
 
@@ -89,6 +91,16 @@ async function checkin(req, res) {
   try { v = JSON.parse(body.toString('utf8')) } catch { return res.status(400).json({ error: 'Bad JSON' }) }
   const at = Date.parse(v?.at)
   if (!Number.isFinite(at) || Math.abs(Date.now() - at) > SKEW_MS) return res.status(400).json({ error: 'Stale check-in' })
+  if (v?.type === 'card-alert') {
+    try {
+      const r = await alertMissingCard({ personId: v.personId, name: v.name })
+      console.log('card alert:', JSON.stringify(r))
+      return res.json({ ok: true })
+    } catch (err) {
+      console.error('card alert failed:', err.message)
+      return res.status(500).json({ error: 'Failed' })
+    }
+  }
   try {
     await recordVisit(String(v.personId), String(v.date))
   } catch (err) {
