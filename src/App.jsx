@@ -132,13 +132,20 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
       .finally(() => setCardsLoading(false))
   }, [])
 
+  // Unread @mentions of me (Home + icon badge) — see api/_lib/push.js
+  const [mentions, setMentions] = useState([])
+  const loadMentions = useCallback(() => fetch('/api/notes?mentions=1')
+    .then(r => (r.ok ? r.json() : []))
+    .then(data => setMentions(Array.isArray(data) ? data : []))
+    .catch(() => {}), [])
+
   useEffect(() => {
-    loadCards()
+    loadCards(); loadMentions()
     // Pick up claims from other leaders when the app comes back to the foreground
-    function onVisible() { if (document.visibilityState === 'visible') loadCards() }
+    function onVisible() { if (document.visibilityState === 'visible') { loadCards(); loadMentions() } }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [loadCards])
+  }, [loadCards, loadMentions])
 
   // extra: { leaderId } for an admin's 'assign'
   async function handleCardAction(card, action, extra = {}) {
@@ -168,12 +175,13 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
     report(0.1)
     const results = await Promise.allSettled([
       loadCards(true).finally(step),
+      loadMentions(),
       fetch('/api/people?fresh=1').then(r => r.ok ? r.json() : Promise.reject(new Error('people')))
         .then(data => { if (Array.isArray(data)) setPeople(data) })
         .finally(step),
     ])
     if (results.some(r => r.status === 'rejected')) throw new Error("Couldn't refresh")
-  }, [loadCards])
+  }, [loadCards, loadMentions])
 
   const [loadProgress, setLoadProgress] = useState(30)
   const [loadLabel, setLoadLabel]       = useState('Loading people…')
@@ -269,8 +277,18 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
   // App-icon badge: guests waiting on me (same rule the server uses in pushes).
   useEffect(() => {
     if (cardsLoading || cardsError) return
-    setIconBadge(badgeCount(currentCards, { crew: myCrew, me: currentUser }))
-  }, [currentCards, myCrew, currentUser, cardsLoading, cardsError])
+    setIconBadge(badgeCount(currentCards, { crew: myCrew, me: currentUser }) + mentions.length)
+  }, [currentCards, myCrew, currentUser, cardsLoading, cardsError, mentions])
+
+  // Opening a guest marks my mentions about them as read.
+  useEffect(() => {
+    if (!selectedId || !mentions.some(m => String(m.personId) === String(selectedId))) return
+    setMentions(prev => prev.filter(m => String(m.personId) !== String(selectedId)))
+    fetch('/api/notes', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'read', personId: selectedId }),
+    }).then(r => (r.ok ? r.json() : null)).then(left => { if (Array.isArray(left)) setMentions(left) }).catch(() => {})
+  }, [selectedId, mentions])
   // Keep this device's crew (for badges sent with pushes) in step with the picker.
   const firstCrew = useRef(true)
   useEffect(() => {
@@ -371,6 +389,7 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
             selectedId={selectedId}
             onSelect={setSelectedId}
             onSeeAll={openSearch}
+            mentions={mentions}
           />
         </div>
         {/* Search stays mounted so filters survive switching tabs */}

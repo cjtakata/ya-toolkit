@@ -6,7 +6,7 @@
 import { pcoFetch } from './pco.js'
 import { isLeaderPerson } from './auth.js'
 import { clearstreamReady, inQuietHours, loadLeaders, recipients, mentionText, sendText } from './texting.js'
-import { pushReady, pushTo, badgeContext } from './push.js'
+import { pushReady, pushTo, badgeContext, storeReady, addUnreadMention } from './push.js'
 import { MINISTRY } from '../../ministry.config.js'
 
 export const CREWS = Object.fromEntries(MINISTRY.crews.map(c => [c.key, c.label]))
@@ -75,6 +75,23 @@ export async function notifyMentions(payload) {
 
   const [text, push] = await Promise.all([texting, pushing])
   return push ? { ...text, pushed: push.leaders } : text
+}
+
+// Remember the mention as unread for everyone it reaches (shown on their
+// Home and counted in their icon badge until they open that guest).
+export async function recordUnreadMentions({ noteId, personId, authorId, authorName, leaderIds, crews, quote }) {
+  if (!storeReady()) return
+  const [leaders, guest] = await Promise.all([
+    loadLeaders(),
+    pcoFetch(`/people/v2/people/${personId}`).then(({ data }) =>
+      [data?.attributes?.first_name, data?.attributes?.last_name].filter(Boolean).join(' ') || 'a guest'),
+  ])
+  const ids = pushRecipients(leaders, { leaderIds, crews, authorId })
+  const q = String(quote || '').replace(/\s+/g, ' ').trim()
+  await addUnreadMention(ids, {
+    noteId: String(noteId), personId: String(personId), guest, author: authorName,
+    quote: q.length > 140 ? q.slice(0, 137).trimEnd() + '...' : q,
+  })
 }
 
 // Who a mention reaches for push: mentioned leaders + every leader of a
