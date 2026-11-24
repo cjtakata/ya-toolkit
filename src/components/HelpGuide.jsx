@@ -227,7 +227,7 @@ export default function HelpGuide({ isAdmin = false }) {
             <li><b>Assign or reassign</b> a guest to any leader from the Admin box on their page. It counts as that leader's claim.</li>
             <li><b>Release</b> another leader's claim, or <b>Remove from follow-up</b> for someone who shouldn't be in it (their profile and notes stay).</li>
             <li><b>Leader status</b> gives someone access to this app, so only admins can set or remove it.</li>
-            <li><b>Viewer status</b> lets someone outside YA (staff, another ministry) sign in and look around with real data and leave notes, without being able to change anything else (no claiming, texting, edits or @mentions). Add a "Viewer" option to the YA Status field in Planning Center, then set it on their profile there. Only admins can give or remove it.</li>
+            <li><b>Viewer status</b> lets someone outside YA (staff, another ministry) sign in and look around with real data and leave notes, without being able to change anything else (they can @mention individual leaders, but not whole crews; no claiming, texting or edits). Add a "Viewer" option to the YA Status field in Planning Center, then set it on their profile there. Only admins can give or remove it.</li>
           </ul>
         </section>
       )}
