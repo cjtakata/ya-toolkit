@@ -66,7 +66,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
   // Viewers can @mention leaders, not whole crews.
   const suggestions = mq ? matchTargets(readOnly ? targets.filter(t => t.type === 'leader') : targets, mq.query) : []
   const draftMentions = mentionsInText(noteText, picked)
-  const quietNow = draftMentions.length > 0 && inQuietHours()
+  const quietNow = MINISTRY.texting.enabled !== false && draftMentions.length > 0 && inQuietHours()   // texts off: nothing is held
   // After inserting a mention, put the caret right after it before the next keystroke
   useLayoutEffect(() => {
     const el = noteRef.current
@@ -161,7 +161,8 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
       setSendNow(false)
       const who = [...(note.notified?.leaders || []), ...(note.notified?.crews || []).map(c => `${c} leaders`)]
       if (who.length) {
-        setNotice(!note.notified.sent ? `Note saved, but the text to ${listJoin(who)} didn't go out`
+        setNotice(note.notified.textsOff ? `Notified ${listJoin(who)} in the app`
+          : !note.notified.sent ? `Note saved, but the text to ${listJoin(who)} didn't go out`
           : held ? `Texting ${listJoin(who)} at 8am (quiet hours)` : `Texting ${listJoin(who)}`)
         setTimeout(() => setNotice(''), 5000)
       }

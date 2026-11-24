@@ -199,6 +199,7 @@ export async function markMentionsRead(pcoId, personId) {
 //   channel: 'push' | 'text'
 //   result:  'sent' | 'off' (notifications off) | 'failed' | 'held' (quiet hours)
 //            | 'no-mobile' | 'zapier' (handed to the Zapier workflow) | 'test-number'
+//            text 'off': texting is switched off in ministry.config.js
 export function startLog(kind, summary, extra = {}) {
   return { kind, summary, at: new Date().toISOString(), ...extra, leaders: {} }
 }

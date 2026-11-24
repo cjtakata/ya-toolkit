@@ -61,6 +61,10 @@ export const MINISTRY = {
   // ── Texting leaders (Clearstream) ──────────────────────────────────────
   // The API key is secret and lives in Vercel (CLEARSTREAM_API_KEY), not here.
   texting: {
+    // false: the app sends no texts at all (and hands nothing to Zapier).
+    // Leaders hear about mentions and new guests through push notifications
+    // only. Set to true once CLEARSTREAM_API_KEY is in Vercel to text again.
+    enabled: false,
     from: '+14254751237',          // the YA line texts are sent from
     mentionHeader: 'YA Mention',   // shown in front of the text: "YA Mention: ..."
     newGuestHeader: 'YA New Guest',

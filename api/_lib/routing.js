@@ -13,11 +13,13 @@
 //                   sends the texts (no double texts during the switch)
 //   "app"           the app also sets the crew and texts through Clearstream
 //                   (turn the Zapier workflow off at the same time)
+// With texting off (ministry.config.js) the Zapier workflow is off too, so the
+// app always sets the crew, sends no texts and logs them as "off".
 import { pcoFetch, getFieldOptions, setDatum, FIELD } from './pco.js'
 import { crewToList } from './person.js'
 import { adminIds } from './auth.js'
 import { WORKFLOW_ID, STEP_WAITING } from './cards.js'
-import { clearstreamReady, loadLeaders, plain, personLink, sendText } from './texting.js'
+import { textingOn, clearstreamReady, loadLeaders, plain, personLink, sendText } from './texting.js'
 import { pushReady, pushTo, badgeContext, firstTime, startLog, logLine, saveLog } from './push.js'
 import { MINISTRY } from '../../ministry.config.js'
 
@@ -76,9 +78,9 @@ export async function routeNewCard({ cardId, personId, workflowId }) {
   const crew = existingCrew || crewForAge(age)
   const base = { cardId: String(cardId), guest, age, crew, crewFrom: existingCrew ? 'profile' : crew ? 'age' : 'none', mode }
 
-  // Save the crew from their age (app mode only; Zapier does it otherwise).
+  // Save the crew from their age (Zapier does it otherwise, until it's off).
   let crewSet = false
-  if (mode === 'app' && !existingCrew && crew) {
+  if ((mode === 'app' || !textingOn()) && !existingCrew && crew) {
     const opts = await getFieldOptions(FIELD.crew).catch(() => [])
     const value = opts.find(o => String(o).trim().toLowerCase() === LABEL[crew].toLowerCase()) || LABEL[crew]
     crewSet = await setDatum(String(personId), FIELD.crew, value).then(() => true).catch(err => { console.error('set crew failed:', err.message); return false })
@@ -97,11 +99,11 @@ export async function routeNewCard({ cardId, personId, workflowId }) {
   // Once per card, even if Planning Center delivers the event again.
   if (!(await firstTime(`newguest-${cardId}`, { personId: String(personId) }))) return { ...base, crewSet, skipped: 'already-notified' }
 
-  if (mode === 'app' && !clearstreamReady()) console.warn('NEW_GUEST_ROUTING=app but CLEARSTREAM_API_KEY is not set: no new-guest texts were sent')
+  if (mode === 'app' && textingOn() && !clearstreamReady()) console.warn('NEW_GUEST_ROUTING=app but CLEARSTREAM_API_KEY is not set: no new-guest texts were sent')
   const log = startLog('newguest', `New guest: ${guest} (${crew ? LABEL[crew] : 'needs a crew'})`, { personId: String(personId) })
   const appTexts = mode === 'app' && clearstreamReady()
   // Until the switchover, Zapier's "YA New Guest Routing" sends these texts.
-  if (!appTexts) for (const l of intended) logLine(log, l, { channel: 'text', result: 'zapier' })
+  if (!appTexts) for (const l of intended) logLine(log, l, { channel: 'text', result: textingOn() ? 'zapier' : 'off' })
   const [texted, pushed] = await Promise.all([
     appTexts ? textLeaders(intended, guest, crew, age, personId, log) : Promise.resolve(null),
     pushReady() ? pushLeaders(intended, guest, crew, personId, cardId, log) : Promise.resolve(null),

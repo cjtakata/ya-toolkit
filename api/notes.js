@@ -146,7 +146,7 @@ export default async function handler(req, res) {
 
       const n = created.data
 
-      // @mentions → text the leaders (Clearstream directly, or the Zapier "YA Mention" workflow).
+      // @mentions → notify the leaders (push; texts via Clearstream or Zapier unless texting is off).
       // The note is already saved; a failed notification only gets logged.
       // Viewers can @mention individual leaders, but not whole crews.
       const allowed = viewer && Array.isArray(mentions) ? mentions.filter(m => m?.type === 'leader') : mentions

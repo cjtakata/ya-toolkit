@@ -2,10 +2,11 @@
 // sends what was picked ({type:'leader', id} / {type:'crew', key}). We keep only
 // mentions that are real and still in the text, then text the leaders: directly
 // through Clearstream when it's set up, otherwise via the Zapier "YA Mention"
-// workflow (which re-reads the note from PCO).
+// workflow (which re-reads the note from PCO). With texting switched off in
+// ministry.config.js, no texts and no Zapier: push notifications only.
 import { pcoFetch } from './pco.js'
 import { isLeaderPerson } from './auth.js'
-import { clearstreamReady, inQuietHours, loadLeaders, recipients, mentionText, sendText } from './texting.js'
+import { textingOn, clearstreamReady, inQuietHours, loadLeaders, recipients, mentionText, sendText } from './texting.js'
 import { pushReady, pushTo, badgeContext, storeReady, addUnreadMention, startLog, logLine, saveLog } from './push.js'
 import { MINISTRY } from '../../ministry.config.js'
 
@@ -51,7 +52,9 @@ export async function checkMentions(text, raw, authorId) {
 //   is the reminder).
 // payload: { noteId, personId, authorId, authorName, leaderIds, crews, urgent, quote }
 export async function notifyMentions(payload) {
-  const quiet = inQuietHours()
+  const textsOff = !textingOn()
+  // With texts off there's no 8am text to catch up, so pushes always go now.
+  const quiet = !textsOff && inQuietHours()
   const direct = clearstreamReady() && (payload.urgent || !quiet)
   const wantPush = pushReady() && (payload.urgent || !quiet)
 
@@ -80,7 +83,12 @@ export async function notifyMentions(payload) {
   const reached = log ? pushRecipients(leaders, payload).map(id => leaders.find(l => l.id === id)) : []
   if (log && !wantPush && pushReady()) for (const l of reached) logLine(log, l, { channel: 'push', result: 'held' })
 
-  const texting = direct
+  const texting = textsOff
+    ? Promise.resolve().then(() => {
+        for (const l of reached) logLine(log, l, { channel: 'text', result: 'off' })
+        return { sent: false, via: 'off', textsOff: true }
+      })
+    : direct
     ? lookups().then(() => textDirectly(payload, leaders, guest, log)).then(r => ({ ...r, via: 'clearstream' }))
         .catch(err => { console.error('mention texting failed:', err.message); return { sent: false, via: 'clearstream', reason: err.message } })
     : notifyViaZapier(payload).then(r => {
