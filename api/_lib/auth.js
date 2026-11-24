@@ -100,7 +100,8 @@ export function isAdmin(user) {
   return !!user && adminIds().includes(String(user.id))
 }
 
-export async function requireAuth(req, res) {
+// opts.viewerMayPost: this endpoint lets viewers POST (notes only).
+export async function requireAuth(req, res, opts = {}) {
   const token = parseCookies(req)[COOKIE]
   if (!token) { res.status(401).json({ error: 'Unauthorized' }); return null }
   let payload
@@ -119,8 +120,9 @@ export async function requireAuth(req, res) {
     res.status(401).json({ error: 'Your YA Toolkit access has ended' }); return null
   }
   // Viewers can read everything a leader can, and change nothing.
-  if (role === 'viewer' && req.method !== 'GET' && req.method !== 'HEAD') {
-    res.status(403).json({ error: 'You have view-only access, so changes are turned off.' }); return null
+  const viewerOk = req.method === 'GET' || req.method === 'HEAD' || (opts.viewerMayPost && req.method === 'POST')
+  if (role === 'viewer' && !viewerOk) {
+    res.status(403).json({ error: 'You have view-only access: you can leave notes, but other changes are turned off.' }); return null
   }
   return { ...payload, role }
 }

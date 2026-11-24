@@ -353,7 +353,7 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
         onOpenProfile={() => setProfileOpen(true)}
       />
       {user.viewOnly && (
-        <div className="viewonly-bar" role="note"><Eye size={14} /> View-only access: you can look around, but changes are turned off.</div>
+        <div className="viewonly-bar" role="note"><Eye size={14} /> View-only access: you can look around and leave notes, but other changes are turned off.</div>
       )}
       <div className="app-body">
         <div className={`tab-view${tab === 'home' ? '' : ' tab-hidden'}`}>

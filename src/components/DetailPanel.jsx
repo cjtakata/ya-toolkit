@@ -63,7 +63,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
   const [notice, setNotice]           = useState('')
   const [sendNow, setSendNow]         = useState(false)   // skip quiet hours for this note's mention texts
   const targets = useMemo(() => mentionTargets(leaders), [leaders])
-  const suggestions = mq ? matchTargets(targets, mq.query) : []
+  const suggestions = mq && !readOnly ? matchTargets(targets, mq.query) : []   // viewers can't @mention
   const draftMentions = mentionsInText(noteText, picked)
   const quietNow = draftMentions.length > 0 && inQuietHours()
   // After inserting a mention, put the caret right after it before the next keystroke
@@ -339,7 +339,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
             {noteCount > 0 && <span className="notes-count">{noteCount}</span>}
           </div>
 
-          {!readOnly && <div className="note-compose">
+          <div className="note-compose">
             <textarea
               ref={noteRef}
               className="note-compose-input"
@@ -370,7 +370,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
             >
               {posting ? '…' : 'Post'}
             </button>
-          </div>}
+          </div>
 
           {quietNow && !readOnly && (
             <label className="mention-quiet">
