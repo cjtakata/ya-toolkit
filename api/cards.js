@@ -4,8 +4,9 @@ import { peopleById } from './_lib/person.js'
 import { listCards, claimCard, releaseCard, markTexted, removeCard, CardError } from './_lib/cards.js'
 
 // GET  /api/cards                      → connection-card follow-ups (open + last 30 days)
-// GET  /api/cards?stats=1              → admins: every card, who claimed/texted and when
-//                                        (no guest details), for the reach-out dashboard
+// GET  /api/cards?stats=1              → admins: every card, who claimed/texted and when,
+//                                        with the guest's id and name only, for the
+//                                        reach-out dashboard and its activity timeline
 // POST /api/cards {cardId, action}     → action: 'claim' | 'release' | 'texted'
 //   admins only (see _lib/auth.js):
 // POST /api/cards {cardId, action: 'assign', leaderId}  → claim on that leader's behalf
@@ -26,10 +27,10 @@ export default async function handler(req, res) {
     if (req.method === 'GET' && req.query?.stats) {
       if (!isAdmin(user)) return res.status(403).json({ error: 'Only YA admins can see this.' })
       if (!_stats || Date.now() - _statsAt > STATS_MS || req.query?.fresh) {
-        _stats = (await listCards({ allTime: true }))
-          .filter(c => c.state !== 'removed')
-          .map(({ state, submittedAt, claimedBy, claimedAt, contactedBy, contactedAt }) =>
-            ({ state, submittedAt, claimedBy, claimedAt, contactedBy, contactedAt }))
+        const all = (await listCards({ allTime: true })).filter(c => c.state !== 'removed')
+        const people = await peopleById([...new Set(all.map(c => c.personId).filter(Boolean))])
+        _stats = all.map(({ personId, state, submittedAt, claimedBy, claimedAt, claimedViaText, contactedBy, contactedAt }) =>
+          ({ personId, guest: people[personId]?.name || null, state, submittedAt, claimedBy, claimedAt, claimedViaText, contactedBy, contactedAt }))
         _statsAt = Date.now()
       }
       res.setHeader('Cache-Control', 'private, no-store')

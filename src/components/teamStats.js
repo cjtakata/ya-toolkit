@@ -68,3 +68,48 @@ export function teamStats(records, leaderNames = [], days = 30, now = Date.now()
   const quiet = all.filter(x => !x.texted && !x.open).map(x => x.name).sort((a, b) => a.localeCompare(b))
   return { team, active, quiet, unrecorded }
 }
+
+// ── Who did what, when ──────────────────────────────────────────────────
+// Every claim and text as a timeline, newest first, within the range.
+// A guest texted without a separate claim shows only the text.
+export function activity(records, days = 30, now = Date.now()) {
+  const since = days == null ? -Infinity : now - days * 86_400_000
+  const inRange = iso => !!iso && new Date(iso).getTime() >= since
+  const ev = []
+  for (const r of records) {
+    const guest = r.guest || 'a guest'
+    if (r.claimedBy && r.claimedAt && !r.claimedViaText && inRange(r.claimedAt)) {
+      ev.push({ kind: 'claimed', leader: r.claimedBy, guest, personId: r.personId, at: r.claimedAt,
+        afterCardHrs: hoursBetween(r.submittedAt, r.claimedAt) })
+    }
+    if (r.state === 'contacted' && r.contactedBy && inRange(r.contactedAt)) {
+      ev.push({ kind: 'texted', leader: r.contactedBy, guest, personId: r.personId, at: r.contactedAt,
+        afterCardHrs: hoursBetween(r.submittedAt, r.contactedAt) })
+    }
+  }
+  return ev.sort((a, b) => b.at.localeCompare(a.at))
+}
+
+// One leader's guests: open claims first (oldest first), then texted (newest first).
+export function leaderGuests(records, name, days = 30, now = Date.now()) {
+  const since = days == null ? -Infinity : now - days * 86_400_000
+  const open = records.filter(r => r.state === 'claimed' && r.claimedBy === name)
+    .sort((a, b) => (a.claimedAt || '').localeCompare(b.claimedAt || ''))
+  const done = records.filter(r => r.state === 'contacted' && r.contactedBy === name
+    && r.contactedAt && new Date(r.contactedAt).getTime() >= since)
+    .sort((a, b) => b.contactedAt.localeCompare(a.contactedAt))
+  return [...open, ...done].map(r => ({
+    personId: r.personId, guest: r.guest || 'a guest', open: r.state === 'claimed',
+    cardAt: r.submittedAt,
+    claimedAt: r.claimedViaText ? null : r.claimedAt,
+    textedAt: r.state === 'contacted' ? r.contactedAt : null,
+    hrs: r.state === 'contacted' ? hoursBetween(r.submittedAt, r.contactedAt) : null,
+  }))
+}
+
+// "Tue, Nov 22 · 1:46 PM" in the viewer's own time zone
+export function stamp(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return `${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+}

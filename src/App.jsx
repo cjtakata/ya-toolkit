@@ -402,7 +402,8 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
       </Sheet>
       {user.isAdmin && (
         <Sheet open={teamOpen} title="Leader reach-outs" tall onClose={() => setTeamOpen(false)}>
-          {teamOpen && <TeamStats leaders={people.filter(p => p.status === MINISTRY.statuses.leader)} />}
+          {teamOpen && <TeamStats leaders={people.filter(p => p.status === MINISTRY.statuses.leader)}
+            onOpenPerson={id => { setTeamOpen(false); setSelectedId(id) }} />}
         </Sheet>
       )}
       {user.isAdmin && (

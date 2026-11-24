@@ -29,17 +29,18 @@ const cardPath = id => `/people/v2/workflows/${WORKFLOW_ID}/cards/${id}`
 const NOTE_RE = /^(Claimed|Released|Texted) by (.+?)(?: \(| in YA Toolkit| by text|\.?$)/
 
 export function readNotes(notes) {
-  let claimedBy = null, claimedAt = null, contactedBy = null
+  let claimedBy = null, claimedAt = null, contactedBy = null, claimedViaText = false
   const sorted = [...notes].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
   for (const n of sorted) {
     const m = (n.note || '').match(NOTE_RE)
     if (!m) continue
     const [, kind, who] = m
-    if (kind === 'Claimed')  { claimedBy = who.trim(); claimedAt = n.createdAt }
-    if (kind === 'Released') { claimedBy = null; claimedAt = null }
-    if (kind === 'Texted')   { contactedBy = who.trim(); if (!claimedBy) { claimedBy = contactedBy; claimedAt = n.createdAt } }
+    if (kind === 'Claimed')  { claimedBy = who.trim(); claimedAt = n.createdAt; claimedViaText = false }
+    if (kind === 'Released') { claimedBy = null; claimedAt = null; claimedViaText = false }
+    if (kind === 'Texted')   { contactedBy = who.trim(); if (!claimedBy) { claimedBy = contactedBy; claimedAt = n.createdAt; claimedViaText = true } }
   }
-  return { claimedBy, claimedAt, contactedBy }
+  // claimedViaText: nobody claimed first; the texter counts as the claimer.
+  return { claimedBy, claimedAt, contactedBy, claimedViaText }
 }
 
 async function getNotes(cardId) {
@@ -117,6 +118,7 @@ export async function listCards({ allTime = false } = {}) {
       claimedAt:   who.claimedAt || (state !== 'waiting' ? a.moved_to_step_at : null),
       contactedBy: who.contactedBy || null,
       contactedAt: state === 'contacted' ? a.completed_at : null,
+      claimedViaText: !!who.claimedViaText,
       overdue:     !!a.overdue,
     }
   })
