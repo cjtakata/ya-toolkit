@@ -37,7 +37,7 @@ export const MINISTRY = {
   // ── YA Status values (as stored in Planning Center) ────────────────────
   statuses: {
     leader:   'Leader',                // can sign in to the app
-    // Can sign in, look around and leave notes, but can't change anything else (staff, other
+    // Can sign in, look around, leave notes and @mention leaders, but can't change anything else (staff, other
     // ministries). Add this option to the YA Status field in Planning Center.
     viewer:   'Viewer',
     archived: 'Archived',              // hidden from the People list by default

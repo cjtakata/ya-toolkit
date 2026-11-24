@@ -42,7 +42,8 @@ function parseNote(raw) {
 }
 
 export default async function handler(req, res) {
-  // Viewers may post notes (no @mentions); every other change stays refused.
+  // Viewers may post notes (and @mention individual leaders, not whole crews);
+  // every other change stays refused.
   const user = await requireAuth(req, res, { viewerMayPost: true })
   if (!user) return
 
@@ -133,8 +134,9 @@ export default async function handler(req, res) {
 
       // @mentions → text the leaders (Clearstream directly, or the Zapier "YA Mention" workflow).
       // The note is already saved; a failed notification only gets logged.
-      // Viewers' notes don't @mention anyone (no texts or pushes from them).
-      const tagged = viewer ? { leaders: [], crews: [] } : await checkMentions(text, mentions, user.id).catch(err => {
+      // Viewers can @mention individual leaders, but not whole crews.
+      const allowed = viewer && Array.isArray(mentions) ? mentions.filter(m => m?.type === 'leader') : mentions
+      const tagged = await checkMentions(text, allowed, user.id).catch(err => {
         console.error('mention check failed:', err.message)
         return { leaders: [], crews: [] }
       })

@@ -63,7 +63,8 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
   const [notice, setNotice]           = useState('')
   const [sendNow, setSendNow]         = useState(false)   // skip quiet hours for this note's mention texts
   const targets = useMemo(() => mentionTargets(leaders), [leaders])
-  const suggestions = mq && !readOnly ? matchTargets(targets, mq.query) : []   // viewers can't @mention
+  // Viewers can @mention leaders, not whole crews.
+  const suggestions = mq ? matchTargets(readOnly ? targets.filter(t => t.type === 'leader') : targets, mq.query) : []
   const draftMentions = mentionsInText(noteText, picked)
   const quietNow = draftMentions.length > 0 && inQuietHours()
   // After inserting a mention, put the caret right after it before the next keystroke
@@ -392,7 +393,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
             </button>
           </div>
 
-          {quietNow && !readOnly && (
+          {quietNow && (
             <label className="mention-quiet">
               <span>Quiet hours (9pm–8am): mention notifications go out at 8am.</span>
               <span className="mention-quiet-toggle">
