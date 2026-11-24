@@ -18,7 +18,7 @@ import { crewToList } from './person.js'
 import { adminIds } from './auth.js'
 import { WORKFLOW_ID, STEP_WAITING } from './cards.js'
 import { clearstreamReady, loadLeaders, plain, personLink, sendText } from './texting.js'
-import { pushReady, pushTo, badgeContext, firstTime } from './push.js'
+import { pushReady, pushTo, badgeContext, firstTime, startLog, logLine, saveLog } from './push.js'
 import { MINISTRY } from '../../ministry.config.js'
 
 const LABEL = Object.fromEntries(MINISTRY.crews.map(c => [c.key, c.label]))
@@ -98,15 +98,21 @@ export async function routeNewCard({ cardId, personId, workflowId }) {
   if (!(await firstTime(`newguest-${cardId}`, { personId: String(personId) }))) return { ...base, crewSet, skipped: 'already-notified' }
 
   if (mode === 'app' && !clearstreamReady()) console.warn('NEW_GUEST_ROUTING=app but CLEARSTREAM_API_KEY is not set: no new-guest texts were sent')
+  const log = startLog('newguest', `New guest: ${guest} (${crew ? LABEL[crew] : 'needs a crew'})`, { personId: String(personId) })
+  const appTexts = mode === 'app' && clearstreamReady()
+  // Until the switchover, Zapier's "YA New Guest Routing" sends these texts.
+  if (!appTexts) for (const l of intended) logLine(log, l, { channel: 'text', result: 'zapier' })
   const [texted, pushed] = await Promise.all([
-    mode === 'app' && clearstreamReady() ? textLeaders(intended, guest, crew, age, personId) : Promise.resolve(null),
-    pushReady() ? pushLeaders(intended, guest, crew, personId, cardId) : Promise.resolve(null),
+    appTexts ? textLeaders(intended, guest, crew, age, personId, log) : Promise.resolve(null),
+    pushReady() ? pushLeaders(intended, guest, crew, personId, cardId, log) : Promise.resolve(null),
   ])
+  await saveLog(log).catch(err => console.error('notification log failed:', err.message))
   return { ...base, crewSet, intended: intended.map(l => l.name), texted, pushed }
 }
 
-async function textLeaders(intended, guest, crew, age, personId) {
+async function textLeaders(intended, guest, crew, age, personId, log) {
   const seen = new Set()
+  for (const l of intended) if (!l.mobile) logLine(log, l, { channel: 'text', result: 'no-mobile' })
   const to = intended.filter(l => l.mobile && !seen.has(l.mobile) && seen.add(l.mobile))
   let body = newGuestText(guest, crew, age, personId)
   const testTo = process.env.CLEARSTREAM_TEST_TO
@@ -114,21 +120,24 @@ async function textLeaders(intended, guest, crew, age, personId) {
     ? [{ name: 'TEST', mobile: testTo, body: plain(`[TEST>${to.map(l => l.first).join(',') || 'none'}] ${body}`) }]
     : to.map(l => ({ name: l.name, mobile: l.mobile, body }))
   let sent = 0
-  for (const o of outgoing) {
+  for (const [i, o] of outgoing.entries()) {
     const r = await sendText(o.mobile, o.body, MINISTRY.texting.newGuestHeader).catch(e => ({ ok: false, error: e.message }))
     if (r.ok) sent++
     else console.error('new guest text failed:', o.name, r.status, r.error)
+    if (testTo) for (const l of to) logLine(log, l, { channel: 'text', result: r.ok ? 'test-number' : 'failed' })
+    else logLine(log, to[i], { channel: 'text', result: r.ok ? 'sent' : 'failed' })
   }
   return { sent, of: outgoing.length, test: !!testTo }
 }
 
-async function pushLeaders(intended, guest, crew, personId, cardId) {
+async function pushLeaders(intended, guest, crew, personId, cardId, log) {
   const countFor = await badgeContext().catch(() => null)
   const counts = await Promise.all(intended.map(l => pushTo(l.id, {
     title: `New guest: ${guest}`,
     body: crew ? `${LABEL[crew]} · filled out a connection card. Tap to claim.` : 'Needs a crew · filled out a connection card. Tap to claim.',
     url: `/people#/person/${personId}`, tag: `newguest-${cardId}`,
     badgeFor: countFor ? d => countFor(l.name, d.crew) : undefined,
+    log, logName: l.name,
   }).catch(err => { console.error('new guest push failed:', l.id, err.message); return 0 })))
   return { leaders: counts.filter(n => n > 0).length }
 }

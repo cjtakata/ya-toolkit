@@ -1263,3 +1263,25 @@ a.notif-go { text-decoration: none; }
 .mention-row-time { flex-shrink: 0; font-size: var(--fs-footnote); color: var(--muted); }
 #home-mentions { margin-bottom: 18px; }
 
+
+/* Leader notifications (admin) */
+.stat-of { font-size: 18px; color: var(--muted); font-weight: var(--fw-semibold); }
+.notif-leader.selected, .notif-leader.selected:hover { background: var(--primary-light); }
+.notif-pill { flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-caption); font-weight: var(--fw-semibold);
+  border-radius: var(--r-pill); padding: 3px 9px; }
+.notif-pill.on { background: var(--green-soft); color: var(--green-ink); }
+.notif-pill.off { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+.notif-warn { color: var(--amber-deep); font-weight: var(--fw-semibold); }
+.log-filter { align-self: flex-start; display: inline-flex; align-items: center; gap: 5px; margin-bottom: 8px; border: 1px solid var(--primary-line);
+  background: var(--primary-light); color: var(--primary); border-radius: var(--r-pill); padding: 4px 10px; font: inherit;
+  font-size: var(--fs-footnote); font-weight: var(--fw-semibold); cursor: pointer; }
+.log-icon { background: var(--primary-light); color: var(--primary); }
+.log-leaders { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.log-leaders li { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.log-name { font-size: var(--fs-footnote); font-weight: var(--fw-semibold); color: var(--text); margin-right: 2px; }
+.log-chip { font-size: var(--fs-caption); font-weight: var(--fw-semibold); border-radius: var(--r-pill); padding: 1px 8px; border: 1px solid transparent; }
+.log-chip.ok { background: var(--green-soft); color: var(--green-ink); }
+.log-chip.info { background: var(--primary-light); color: var(--primary); }
+.log-chip.warn { background: var(--amber-soft); color: var(--amber-deep); }
+.log-chip.bad { background: var(--red-bg); color: var(--red-ink); border-color: var(--red-line); }
+.log-chip.muted { background: var(--bg); color: var(--muted); border-color: var(--border); }
