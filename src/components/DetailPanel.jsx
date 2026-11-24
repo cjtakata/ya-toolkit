@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react'
-import { Check, Link2, ChevronLeft, ExternalLink, Flag, UserCheck, User, MessageCircle, Inbox, Hand, Undo2, CircleCheck, CircleMinus, Workflow, ShieldCheck } from 'lucide-react'
+import { Check, Link2, ChevronLeft, ExternalLink, Flag, UserCheck, User, MessageCircle, Inbox, Hand, Undo2, CircleCheck, CircleMinus, Workflow, ShieldCheck, Heart } from 'lucide-react'
 import { LIST_META } from './listMeta.js'
 import { statusClass } from './statusMeta.js'
 import PickerRow from './PickerRow.jsx'
@@ -114,6 +114,26 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
       .then(data => { if (id === person.id) setNotes(Array.isArray(data) ? data : []) })
       .catch(() => {})
       .finally(() => setNotesLoading(false))
+  }
+
+  // Like / unlike: shows right away, put back if saving fails.
+  async function toggleLike(note) {
+    const like = !note.likedByMe
+    const me = currentUser
+    const apply = (liked, names) => setNotes(prev => prev.map(n => n.id === note.id ? { ...n, likedByMe: liked, likes: names } : n))
+    const before = note.likes || []
+    apply(like, like ? [...before.filter(x => x !== me), me] : before.filter(x => x !== me))
+    try {
+      const r = await fetch('/api/notes', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'like', personId: person.id, noteId: note.id, like }),
+      })
+      if (!r.ok) throw new Error()
+      const j = await r.json()
+      apply(j.likedByMe, j.likes)
+    } catch {
+      apply(note.likedByMe, before)
+    }
   }
 
   async function postNote() {
@@ -391,7 +411,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
             <div className="notes-list">
               {(showAllActivity ? notes : notes.slice(0, FEED_PREVIEW)).map(n => n.kind === 'workflow'
                 ? <HistoryItem key={n.id} item={n} currentUser={currentUser} />
-                : <NoteItem key={n.id} note={n} currentUser={currentUser} targets={targets} />)}
+                : <NoteItem key={n.id} note={n} currentUser={currentUser} targets={targets} onLike={toggleLike} />)}
               {notes.length > FEED_PREVIEW && (
                 <button className="feed-more" onClick={() => setShowAllActivity(v => !v)}>
                   {showAllActivity ? 'Show less' : `View all activity (${notes.length})`}
@@ -570,8 +590,11 @@ function listJoin(xs) {
   return xs.length <= 1 ? (xs[0] || '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`
 }
 
-function NoteItem({ note: n, currentUser, targets = [] }) {
+function NoteItem({ note: n, currentUser, targets = [], onLike }) {
   const who = n.author && n.author === currentUser ? 'You' : (n.author || 'Leader')
+  const likes = n.likes || []
+  // "You, Ana and Pat": you first, then first names
+  const likers = [...(likes.includes(currentUser) ? ['You'] : []), ...likes.filter(x => x !== currentUser).map(x => x.split(' ')[0])]
   return (
     <div className="hist-item hist-note">
       {n.followup
@@ -581,8 +604,17 @@ function NoteItem({ note: n, currentUser, targets = [] }) {
         <strong>{who}</strong>{n.followup ? ' followed up' : ''}: {splitMentions(n.body, targets).map((part, i) => part.target
           ? <span key={i} className={`mention${part.target.type === 'leader' && part.target.label === currentUser ? ' mention-me' : ''}`}>{part.text}</span>
           : part.text)}
+        {likes.length > 0 && <span className="note-likers">Liked by {listJoin(likers)}</span>}
       </span>
-      <span className="note-time">{formatNoteDate(n.createdAt)}</span>
+      <span className="note-side">
+        <span className="note-time">{formatNoteDate(n.createdAt)}</span>
+        {onLike && (
+          <button className={`like-btn${n.likedByMe ? ' liked' : ''}`} onClick={() => onLike(n)}
+            aria-pressed={!!n.likedByMe} aria-label={n.likedByMe ? 'Unlike' : 'Like'}>
+            <Heart size={14} fill={n.likedByMe ? 'currentColor' : 'none'} />{likes.length > 0 && <span>{likes.length}</span>}
+          </button>
+        )}
+      </span>
     </div>
   )
 }
