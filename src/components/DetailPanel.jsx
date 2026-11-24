@@ -11,6 +11,8 @@ import { MINISTRY } from '../../ministry.config.js'
 const CREW_FALLBACK   = MINISTRY.crews.map(c => c.label)
 const STATUS_FALLBACK = MINISTRY.statuses.all
 const LEADER          = MINISTRY.statuses.leader
+// Statuses that give access to this app: only admins can give or remove them.
+const ACCESS          = [MINISTRY.statuses.leader, MINISTRY.statuses.viewer].filter(Boolean)
 
 // Format a US 10-digit number as (xxx)xxx-xxxx; leave anything else as-is.
 function formatPhone(raw) {
@@ -37,7 +39,7 @@ function formatNoteDate(iso) {
     : { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-export default function DetailPanel({ person, crewOptions = [], statusOptions = [], currentUser, textTemplate = '', leaderFirst = '', backLabel = 'Back', variant = 'pane', card = null, onCardAction, isAdmin = false, leaders = [], onClose, onSave }) {
+export default function DetailPanel({ person, crewOptions = [], statusOptions = [], currentUser, textTemplate = '', leaderFirst = '', backLabel = 'Back', variant = 'pane', card = null, onCardAction, isAdmin = false, readOnly = false, leaders = [], onClose, onSave }) {
   const isSheet = variant === 'sheet'   // phones: shown inside a slide-up Sheet
   const crewChoices   = crewOptions.length   ? crewOptions   : CREW_FALLBACK
   const statusChoices = statusOptions.length ? statusOptions : STATUS_FALLBACK
@@ -294,7 +296,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
         </div>
 
         {card && (
-          <CardSection
+          <CardSection readOnly={readOnly}
             card={card} person={person} currentUser={currentUser} textTemplate={textTemplate} leaderFirst={leaderFirst} busy={cardBusy}
             confirming={confirmText} onTextOpened={() => setConfirmText(true)}
             onAction={cardAction} onCancelConfirm={() => setConfirmText(false)}
@@ -317,14 +319,15 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
           <div className="picker-group">
             {/* Leader status grants access to this app, so only admins can give or remove it */}
             <PickerRow label="YA Status" value={draft.status}
-              options={isAdmin ? statusChoices : statusChoices.filter(s => s !== LEADER)}
-              disabled={!isAdmin && draft.status === LEADER} note="Admins only"
+              options={isAdmin ? statusChoices : statusChoices.filter(s => !ACCESS.includes(s))}
+              disabled={readOnly || (!isAdmin && ACCESS.includes(draft.status))} note={readOnly ? 'View-only' : 'Admins only'}
               emptyLabel="Not set" onChange={v => update('status', v)} />
             <PickerRow label="Crew" value={draft.crew} options={crewChoices}
+              disabled={readOnly} note="View-only"
               emptyLabel="Not assigned" onChange={v => update('crew', v)} />
           </div>
           <p className="profile-hint detail-hint">
-            <b>Active</b> getting connected · <b>Serving</b> on a team · <b>Leader</b> can use this app · <b>Archived</b> hidden from lists.
+            <b>Active</b> getting connected · <b>Serving</b> on a team · <b>Leader</b> can use this app{statusChoices.includes(MINISTRY.statuses.viewer) ? <> · <b>Viewer</b> can look around, view-only</> : null} · <b>Archived</b> hidden from lists.
             Crew decides which leaders get texted about them.
           </p>
         </div>
@@ -336,7 +339,7 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
             {noteCount > 0 && <span className="notes-count">{noteCount}</span>}
           </div>
 
-          <div className="note-compose">
+          {!readOnly && <div className="note-compose">
             <textarea
               ref={noteRef}
               className="note-compose-input"
@@ -367,9 +370,9 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
             >
               {posting ? '…' : 'Post'}
             </button>
-          </div>
+          </div>}
 
-          {quietNow && (
+          {quietNow && !readOnly && (
             <label className="mention-quiet">
               <span>Quiet hours (9pm–8am): mention notifications go out at 8am.</span>
               <span className="mention-quiet-toggle">
@@ -404,7 +407,11 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
 
 
 // ── Connection card: claimed? texted? ──────────────────────────────
-function CardSection({ card, person, currentUser, textTemplate, leaderFirst, busy, confirming, onTextOpened, onAction, onCancelConfirm }) {
+function CardSection({ readOnly, ...props }) {
+  // View-only: the same card, without its buttons (the server refuses changes anyway).
+  return <div className={readOnly ? 'fu-readonly' : undefined}><CardSectionInner {...props} /></div>
+}
+function CardSectionInner({ card, person, currentUser, textTemplate, leaderFirst, busy, confirming, onTextOpened, onAction, onCancelConfirm }) {
   const mine     = card.claimedBy && card.claimedBy === currentUser
   const first    = person.name.split(' ')[0]
   const crewName = (person.crew || '').trim()

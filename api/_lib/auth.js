@@ -35,33 +35,49 @@ function cookie(value, maxAge) {
   return `${COOKIE}=${value}; HttpOnly${secure}; SameSite=Lax; Max-Age=${maxAge}; Path=/`
 }
 
-export async function createSessionCookie({ pcoId, email, name, crews }) {
-  const token = await new SignJWT({ auth: 'pco', id: pcoId, username: email, global_name: name, crews: crews || [] })
+export async function createSessionCookie({ pcoId, email, name, crews, role }) {
+  const token = await new SignJWT({ auth: 'pco', id: pcoId, username: email, global_name: name, crews: crews || [],
+    role: role === 'viewer' ? 'viewer' : 'leader' })
     .setProtectedHeader({ alg: 'HS256' }).setExpirationTime('30d').sign(secret())
   return cookie(token, 30 * 24 * 3600)
 }
 export const clearSessionCookie = () => cookie('', 0)
 
-// ── Who's a leader ──────────────────────────────────────────────
-// YA Status = "Leader" in PCO is the whole access rule.
-const leaderNow = async id => (await getDatum(id, FIELD.status))?.attributes?.value === MINISTRY.statuses.leader
+// ── Who can sign in ─────────────────────────────────────────────
+// YA Status in PCO is the whole access rule:
+//   "Leader" → full access · "Viewer" → look around, change nothing.
+const statusNow = async id => (await getDatum(id, FIELD.status))?.attributes?.value
+const leaderNow = async id => (await statusNow(id)) === MINISTRY.statuses.leader
+export const roleFor = status =>
+  status === MINISTRY.statuses.leader ? 'leader' : (MINISTRY.statuses.viewer && status === MINISTRY.statuses.viewer) ? 'viewer' : null
+// Statuses that grant access, so only admins may give or remove them.
+export const ACCESS_STATUSES = [MINISTRY.statuses.leader, MINISTRY.statuses.viewer].filter(Boolean)
 
-// Re-checked every few minutes, so removing someone's Leader status ends their
-// access within LEADER_TTL, not when their 30-day session runs out. If PCO
-// can't answer, keep the last known answer rather than lock everyone out.
-const LEADER_TTL = 5 * 60_000
-const leaderCache = new Map()   // pcoId → { ok, at }
-async function stillLeader(id) {
-  const hit = leaderCache.get(id)
-  if (hit && Date.now() - hit.at < LEADER_TTL) return hit.ok
+// Re-checked every few minutes, so changing someone's YA Status changes (or
+// ends) their access within ROLE_TTL, not when their 30-day session runs out.
+// If PCO can't answer, keep the last known answer rather than lock everyone out.
+const ROLE_TTL = 5 * 60_000
+const roleCache = new Map()   // pcoId → { role, at }
+async function currentRole(id, fallback) {
+  const hit = roleCache.get(id)
+  if (hit && Date.now() - hit.at < ROLE_TTL) return hit.role
   try {
-    const ok = await leaderNow(id)
-    if (leaderCache.size > 2000) leaderCache.clear()
-    leaderCache.set(id, { ok, at: Date.now() })
-    return ok
+    const role = roleFor(await statusNow(id))
+    if (roleCache.size > 2000) roleCache.clear()
+    roleCache.set(id, { role, at: Date.now() })
+    return role
   } catch (err) {
-    console.error('leader re-check failed:', err.message)
-    return hit ? hit.ok : true
+    console.error('access re-check failed:', err.message)
+    return hit ? hit.role : fallback
+  }
+}
+
+// For sign-in: 'leader' | 'viewer' | null. Fails closed.
+export async function signInRole(id) {
+  if (!/^\d+$/.test(String(id))) return null
+  try { return roleFor(await statusNow(String(id))) } catch (err) {
+    console.error('access check failed:', err.message)
+    return null
   }
 }
 
@@ -97,9 +113,14 @@ export async function requireAuth(req, res) {
   if (payload.auth !== 'pco' || !/^\d+$/.test(String(payload.id))) {
     res.status(401).json({ error: 'Please sign in again' }); return null
   }
-  if (!(await stillLeader(String(payload.id)))) {
+  const role = await currentRole(String(payload.id), payload.role === 'viewer' ? 'viewer' : 'leader')
+  if (!role) {
     res.setHeader('Set-Cookie', clearSessionCookie())
-    res.status(401).json({ error: 'Your YA Leader access has ended' }); return null
+    res.status(401).json({ error: 'Your YA Toolkit access has ended' }); return null
   }
-  return payload
+  // Viewers can read everything a leader can, and change nothing.
+  if (role === 'viewer' && req.method !== 'GET' && req.method !== 'HEAD') {
+    res.status(403).json({ error: 'You have view-only access, so changes are turned off.' }); return null
+  }
+  return { ...payload, role }
 }

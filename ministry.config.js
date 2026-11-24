@@ -37,6 +37,9 @@ export const MINISTRY = {
   // ── YA Status values (as stored in Planning Center) ────────────────────
   statuses: {
     leader:   'Leader',                // can sign in to the app
+    // Can sign in and look around, but can't change anything (staff, other
+    // ministries). Add this option to the YA Status field in Planning Center.
+    viewer:   'Viewer',
     archived: 'Archived',              // hidden from the People list by default
     members:  ['Active', 'Serving'],   // counted as people in a crew
     // Everyone on the app's list. Older values still in PCO stay off it.

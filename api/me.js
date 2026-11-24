@@ -112,5 +112,6 @@ export default async function handler(req, res) {
     crews:       user.crews || [],
     textMessage,
     isAdmin:     isAdmin(user),      // can assign leaders to cards and remove guests (see _lib/auth.js)
+    viewOnly:    user.role === 'viewer',   // YA Status "Viewer": can look, can't change anything
   })
 }

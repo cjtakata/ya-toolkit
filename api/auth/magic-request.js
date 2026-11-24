@@ -1,10 +1,11 @@
 import { randomInt, randomUUID } from 'node:crypto'
 import { pcoFetch, getDatum, FIELD } from '../_lib/pco.js'
-import { hashCode, sealChallenge, signLink, isLeaderPerson } from '../_lib/auth.js'
+import { hashCode, sealChallenge, signLink, signInRole } from '../_lib/auth.js'
 import { crewToList } from '../_lib/person.js'
 
 // POST /api/auth/magic-request { email } → { challenge }
-// Emails a 6-digit code (and a sign-in link for desktop) to a YA Leader.
+// Emails a 6-digit code (and a sign-in link for desktop) to a YA Leader, or a
+// Viewer (view-only access; see ministry.config.js statuses.viewer).
 //
 // Every email gets the same reply and moves on to the code screen, so this
 // can't be used to learn who's in PCO or who's a leader: emails that aren't a
@@ -57,10 +58,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    // The first person with this email who is a YA Leader
-    let leaderId = null
+    // A YA Leader with this email (else a Viewer)
+    let leaderId = null, role = null
     for (const id of await peopleWithEmail(email)) {
-      if (await isLeaderPerson(id)) { leaderId = id; break }
+      const r = await signInRole(id)
+      if (r === 'leader') { leaderId = id; role = r; break }
+      if (r === 'viewer' && !leaderId) { leaderId = id; role = r }
     }
     if (!leaderId) return decoy()
 
@@ -75,6 +78,7 @@ export default async function handler(req, res) {
       name:  [a.first_name, a.last_name].filter(Boolean).join(' '),
       email,
       crews: crew === 'unassigned' ? ['*'] : [crew],
+      role,
     }
 
     // 6-digit code typed into the app (works inside the iOS home-screen app),
