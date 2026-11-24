@@ -12,6 +12,7 @@ import HelpGuide from './components/HelpGuide.jsx'
 import TeamStats from './components/TeamStats.jsx'
 import CrewCoverage from './components/CrewCoverage.jsx'
 import LeaderNotifications from './components/LeaderNotifications.jsx'
+import Attendance from './components/Attendance.jsx'
 import { MINISTRY } from '../ministry.config.js'
 import { Eye } from 'lucide-react'
 import InstallPage from './components/InstallPage.jsx'
@@ -73,7 +74,7 @@ function parseHashId() {
   return m ? m[1] : null
 }
 function parseHashTab() {
-  const m = window.location.hash.match(/^#\/(home|search|profile|help|team|crews|notifs)$/)
+  const m = window.location.hash.match(/^#\/(home|search|profile|help|team|crews|notifs|attendance)$/)
   return m ? m[1] : null
 }
 
@@ -102,6 +103,7 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
   const [teamOpen, setTeamOpen]       = useState(() => parseHashTab() === 'team')
   const [crewsOpen, setCrewsOpen]     = useState(() => parseHashTab() === 'crews')
   const [notifsOpen, setNotifsOpen]   = useState(() => parseHashTab() === 'notifs')
+  const [attOpen, setAttOpen]         = useState(() => parseHashTab() === 'attendance')
   const currentUser = user.global_name || user.username || 'Leader'
 
   // The page itself never scrolls while signed in (see html.app-shell in index.css)
@@ -223,12 +225,12 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
   // it); switching tabs just replaces the hash. Query-string filters are dropped
   // once applied so a reload doesn't re-apply them.
   useEffect(() => {
-    const newHash = selectedId ? `#/person/${selectedId}` : helpOpen ? '#/help' : teamOpen ? '#/team' : crewsOpen ? '#/crews' : notifsOpen ? '#/notifs' : profileOpen ? '#/profile' : `#/${tab}`
+    const newHash = selectedId ? `#/person/${selectedId}` : helpOpen ? '#/help' : teamOpen ? '#/team' : crewsOpen ? '#/crews' : notifsOpen ? '#/notifs' : attOpen ? '#/attendance' : profileOpen ? '#/profile' : `#/${tab}`
     if (window.location.hash === newHash && !window.location.search) return
     const url = window.location.pathname + newHash
     if (selectedId && parseHashId() !== selectedId) history.pushState(null, '', url)
     else history.replaceState(null, '', url)
-  }, [selectedId, tab, profileOpen, helpOpen, teamOpen, crewsOpen, notifsOpen])
+  }, [selectedId, tab, profileOpen, helpOpen, teamOpen, crewsOpen, notifsOpen, attOpen])
 
   // Handle browser back/forward
   useEffect(() => {
@@ -240,6 +242,7 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
       setTeamOpen(t === 'team')
       setCrewsOpen(t === 'crews')
       setNotifsOpen(t === 'notifs')
+      setAttOpen(t === 'attendance')
       if (TABS.includes(t)) setTab(t)
     }
     window.addEventListener('popstate', onPop)
@@ -427,7 +430,8 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
         <ProfileTab onOpenHelp={() => { setProfileOpen(false); setHelpOpen(true) }}
           onOpenTeam={user.isAdmin ? () => { setProfileOpen(false); setTeamOpen(true) } : null}
           onOpenCrews={user.isAdmin ? () => { setProfileOpen(false); setCrewsOpen(true) } : null}
-          onOpenNotifs={user.isAdmin ? () => { setProfileOpen(false); setNotifsOpen(true) } : null} user={user} myCrew={myCrew} onChooseCrew={chooseCrew} onLogout={handleLogout}
+          onOpenNotifs={user.isAdmin ? () => { setProfileOpen(false); setNotifsOpen(true) } : null}
+          onOpenAttendance={user.isAdmin ? () => { setProfileOpen(false); setAttOpen(true) } : null} user={user} myCrew={myCrew} onChooseCrew={chooseCrew} onLogout={handleLogout}
           onSaveMessage={textMessage => saveProfile({ textMessage })} onSaveProfile={saveProfile} />
       </Sheet>
       <Sheet open={helpOpen} title="How it works" tall onClose={() => setHelpOpen(false)}>
@@ -442,6 +446,12 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
       {user.isAdmin && (
         <Sheet open={notifsOpen} title="Leader notifications" tall onClose={() => setNotifsOpen(false)}>
           {notifsOpen && <LeaderNotifications people={people} />}
+        </Sheet>
+      )}
+      {user.isAdmin && (
+        <Sheet open={attOpen} title="Attendance" tall onClose={() => setAttOpen(false)}>
+          {attOpen && <Attendance people={people} loading={loading}
+            onOpenPerson={id => { setAttOpen(false); setSelectedId(id) }} />}
         </Sheet>
       )}
       {user.isAdmin && (

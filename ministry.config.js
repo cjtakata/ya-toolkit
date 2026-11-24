@@ -24,6 +24,7 @@ export const MINISTRY = {
       status:      '1065431',   // YA Status (select): Active, Serving, Leader, Archived
       textMessage: '1151583',   // YA Text Message (a leader's own greeting template)
       nickname:    '1151595',   // YA Nickname (app-only)
+      lastSeen:    '1061847',   // Last Seen (date; written by the YA Connect check-in kiosk)
     },
     // The follow-up workflow every connection card lands in.
     workflow: {
