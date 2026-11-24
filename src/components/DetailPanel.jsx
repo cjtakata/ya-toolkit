@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react'
-import { Check, Link2, ChevronLeft, ExternalLink, Flag, UserCheck, User, MessageCircle, Inbox, Hand, Undo2, CircleCheck, CircleMinus, Workflow, ShieldCheck, Heart } from 'lucide-react'
+import { Check, Link2, ChevronLeft, ExternalLink, Flag, UserCheck, User, MessageCircle, Inbox, Hand, Undo2, CircleCheck, CircleMinus, Workflow, ShieldCheck, ThumbsUp } from 'lucide-react'
 import { LIST_META } from './listMeta.js'
 import { statusClass } from './statusMeta.js'
 import PickerRow from './PickerRow.jsx'
@@ -612,7 +612,7 @@ function NoteItem({ note: n, currentUser, targets = [], onLike }) {
         {onLike && (
           <button className={`like-btn${n.likedByMe ? ' liked' : ''}`} onClick={() => onLike(n)}
             aria-pressed={!!n.likedByMe} aria-label={n.likedByMe ? 'Unlike' : 'Like'}>
-            <Heart size={14} fill={n.likedByMe ? 'currentColor' : 'none'} />{likes.length > 0 && <span>{likes.length}</span>}
+            <ThumbsUp size={14} fill={n.likedByMe ? "currentColor" : "none"} />{likes.length > 0 && <span>{likes.length}</span>}
           </button>
         )}
       </span>
