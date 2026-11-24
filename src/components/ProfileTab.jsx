@@ -318,14 +318,14 @@ function NotificationsSection({ myCrew }) {
     body = <p className="notif-text">Notifications are blocked for this app. Turn them on in your phone's <b>Settings → Notifications → YA Toolkit</b>, then come back here.</p>
   } else if (!on) {
     body = <>
-      <p className="notif-text">Get a notification on this device when someone @mentions you or your crew. The app icon also shows how many guests are waiting on you.</p>
+      <p className="notif-text">Get a notification on this device when a new guest comes in for your crew, or someone @mentions you. The app icon also shows how many guests are waiting on you.</p>
       <button className="notif-go" disabled={busy} onClick={() => run(() => turnOn(server.publicKey, myCrew || 'all'), () => { setOn(true); setMsg('Notifications are on for this device.') })}>
         <Bell size={16} /> {busy ? 'Turning on…' : 'Turn on notifications'}
       </button>
     </>
   } else {
     body = <>
-      <p className="notif-text"><b>On for this device.</b> You'll get a notification when someone @mentions you or your crew.</p>
+      <p className="notif-text"><b>On for this device.</b> You'll get a notification for new guests in your crew and when someone @mentions you.</p>
       <div className="notif-actions">
         <button className="notif-link" disabled={busy} onClick={() => run(async () => {
           const r = await sendTest(); setMsg(r.reached ? 'Test sent. It should appear in a few seconds.' : "Couldn't reach this device. Try turning notifications off and on again.")
