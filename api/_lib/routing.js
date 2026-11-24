@@ -143,3 +143,24 @@ async function pushLeaders(intended, guest, crew, personId, cardId, log) {
   }).catch(err => { console.error('new guest push failed:', l.id, err.message); return 0 })))
   return { leaders: counts.filter(n => n > 0).length }
 }
+
+// The YA Connect connection card couldn't add a follow-up card for someone
+// (Planning Center refused it), so no leader was told. Tell the admins, once
+// per person per day, so the guest isn't silently missed.
+export async function alertMissingCard({ personId, name }) {
+  if (!/^\d+$/.test(String(personId))) return { skipped: 'bad-person' }
+  const guest = String(name || 'A guest').replace(/\s+/g, ' ').trim().slice(0, 80) || 'A guest'
+  const day = new Date().toLocaleDateString('en-CA', { timeZone: MINISTRY.texting.quietHours.timeZone })
+  if (!(await firstTime(`cardalert-${personId}-${day}`))) return { skipped: 'already-alerted' }
+  const leaders = await loadLeaders()
+  const admins = leadersFor(leaders, null)
+  const log = startLog('alert', `No follow-up card for ${guest}`, { personId: String(personId) })
+  const reached = pushReady() ? await Promise.all(admins.map(l => pushTo(l.id, {
+    log, logName: l.name,
+    title: `No follow-up card: ${guest}`,
+    body: 'They filled out a connection card, but Planning Center didn’t add a follow-up card. Add one so a leader reaches out.',
+    url: `/people#/person/${personId}`, tag: `cardalert-${personId}`,
+  }).catch(() => 0))) : []
+  await saveLog(log).catch(err => console.error('notification log failed:', err.message))
+  return { admins: admins.length, reached: reached.filter(n => n > 0).length }
+}
