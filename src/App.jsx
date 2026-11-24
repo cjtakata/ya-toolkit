@@ -34,11 +34,16 @@ function LoadingScreen({ label, progress }) {
 }
 
 export default function App() {
+  // Guest links (/p/<id>) are served with their own link preview (vercel.json);
+  // in the app they just open that person.
+  const guestLink = window.location.pathname.match(/^\/p\/(\d+)\/?$/)
+  if (guestLink) { window.history.replaceState(null, '', `/people#/person/${guestLink[1]}`); document.title = 'YA Toolkit' }
+
   // /install: the shareable "add to your home screen" page, no sign-in needed.
   // Opened from the home screen itself, it just goes into the app.
   if (window.location.pathname === INSTALL_PATH) {
     if (!isStandalone()) return <InstallPage />
-    window.history.replaceState(null, '', '/people')
+    window.history.replaceState(null, '', '/people'); document.title = 'YA Toolkit'
   }
   return <SignedInGate />
 }
