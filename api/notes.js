@@ -1,6 +1,7 @@
 import { requireAuth } from './_lib/auth.js'
-import { pcoFetch } from './_lib/pco.js'
+import { pcoFetch, FIELD } from './_lib/pco.js'
 import { personHistory } from './_lib/cards.js'
+import { visitEvents } from './_lib/visits.js'
 import { checkMentions, notifyMentions, recordUnreadMentions } from './_lib/mentions.js'
 import { storeReady, kvRead, kvWrite, unreadMentions, markMentionsRead } from './_lib/push.js'
 import { MINISTRY } from '../ministry.config.js'
@@ -64,10 +65,14 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Invalid person id' })
       }
 
-      const [result, history] = await Promise.all([
+      const [result, history, visits] = await Promise.all([
         pcoFetch(`/people/v2/people/${personId}/notes?per_page=100&order=-created_at`),
         // Follow-up workflow events (card received, claimed, texted…) for the same feed
         req.query.history ? personHistory(personId).catch(err => { console.error('history:', err.message); return [] }) : [],
+        // YA Connect check-ins (kiosk history + their Last Seen date)
+        req.query.history ? pcoFetch(`/people/v2/people/${personId}/field_data?where%5Bfield_definition_id%5D=${FIELD.lastSeen}`)
+          .then(r => visitEvents(personId, r.data?.[0]?.attributes?.value))
+          .catch(err => { console.error('visit history:', err.message); return [] }) : [],
       ])
       const notes = (result.data || [])
         .filter(n => String(n.attributes?.note_category_id) === String(catId))
@@ -84,7 +89,7 @@ export default async function handler(req, res) {
       }
 
       if (!req.query.history) return res.json(notes)
-      const feed = [...notes, ...history.map(h => ({ ...h, createdAt: h.at }))]
+      const feed = [...notes, ...history, ...visits].map(h => (h.kind === 'note' ? h : { ...h, createdAt: h.at }))
         .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
       return res.json(feed)
     }

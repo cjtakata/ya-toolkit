@@ -11,7 +11,7 @@
 //
 // A person's visits = those files + their Last Seen date (which covers
 // check-ins from before this history started).
-import { storeReady, kvWrite, kvList } from './push.js'
+import { storeReady, kvRead, kvWrite, kvList } from './push.js'
 
 const PREFIX = 'checkins/'
 const MAX_DATES = 104   // per person, newest first
@@ -62,4 +62,21 @@ export function visitsFor(index, personId, lastSeen) {
 export async function withVisits(people) {
   const index = await visitIndex().catch(err => { console.error('visit index failed:', err.message); return {} })
   return people.map(p => (p ? { ...p, visits: visitsFor(index, p.id, p.lastSeen) } : p))
+}
+
+// A person's check-ins as events for their Notes & History feed. Kiosk
+// visits carry the real time; a Last Seen date without a kiosk record (from
+// before this history started) is placed at midday that day.
+const FEED_VISITS = 30
+export async function visitEvents(personId, lastSeen) {
+  const index = await visitIndex()
+  const days = visitsFor(index, personId, lastSeen).slice(0, FEED_VISITS)
+  const recorded = new Set(index[String(personId)] || [])
+  return Promise.all(days.map(async day => {
+    const file = recorded.has(day) ? await kvRead(`${PREFIX}${day}/${personId}.json`).catch(() => null) : null
+    return {
+      id: `visit-${day}`, kind: 'workflow', event: 'checkin', text: 'Checked in at YA',
+      at: file?.at || `${day}T20:00:00.000Z`,
+    }
+  }))
 }

@@ -832,7 +832,8 @@ a.detail-email:hover { color: var(--primary); text-decoration: underline; }
 .hist-received .hist-icon { background: var(--amber-soft); color: var(--amber-ink); }
 .hist-claimed  .hist-icon { background: var(--primary-light); color: var(--primary); }
 .hist-done     .hist-icon { background: var(--green-soft); color: var(--green-ink); }
-.hist-received .hist-text, .hist-claimed .hist-text, .hist-done .hist-text { color: var(--text); }
+.hist-checkin  .hist-icon { background: var(--primary-light); color: var(--primary); }
+.hist-received .hist-text, .hist-claimed .hist-text, .hist-done .hist-text, .hist-checkin .hist-text { color: var(--text); }
 
 /* Notes share the activity-row layout */
 .hist-item { align-items: flex-start; }

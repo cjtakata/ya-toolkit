@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react'
-import { Check, Link2, ChevronLeft, ExternalLink, Flag, UserCheck, User, MessageCircle, Inbox, Hand, Undo2, CircleCheck, CircleMinus, Workflow, ShieldCheck, ThumbsUp } from 'lucide-react'
+import { Check, Link2, ChevronLeft, ExternalLink, Flag, UserCheck, User, MessageCircle, Inbox, Hand, Undo2, CircleCheck, CircleMinus, Workflow, ShieldCheck, ThumbsUp, CalendarCheck } from 'lucide-react'
 import { LIST_META } from './listMeta.js'
 import { statusClass } from './statusMeta.js'
 import PickerRow from './PickerRow.jsx'
@@ -644,6 +644,7 @@ const HISTORY_ICONS = {
   texted:    { Icon: MessageCircle, cls: 'hist-done' },
   completed: { Icon: CircleCheck,  cls: 'hist-done' },
   removed:   { Icon: CircleMinus,  cls: 'hist-muted' },
+  checkin:   { Icon: CalendarCheck, cls: 'hist-checkin' },
   note:      { Icon: Workflow,     cls: 'hist-muted' },
 }
 function HistoryItem({ item, currentUser }) {
