@@ -35,10 +35,10 @@ export default function ProfileTab({ onOpenHelp, onOpenTeam, onOpenCrews, user, 
   return (
     <div className="profile-sheet">
         <div className="profile-card">
-          <button type="button" className={`profile-avatar profile-avatar-edit${photoBusy ? ' busy' : ''}`}
-            onClick={() => fileRef.current?.click()} disabled={photoBusy} aria-label="Change your photo">
+          <button type="button" className={`profile-avatar${user.viewOnly ? '' : ' profile-avatar-edit'}${photoBusy ? ' busy' : ''}`}
+            onClick={() => !user.viewOnly && fileRef.current?.click()} disabled={photoBusy || user.viewOnly} aria-label="Change your photo">
             {user.avatar ? <img src={user.avatar} alt="" /> : initials}
-            <span className="profile-avatar-badge" aria-hidden="true"><Camera size={14} strokeWidth={2.4} /></span>
+            {!user.viewOnly && <span className="profile-avatar-badge" aria-hidden="true"><Camera size={14} strokeWidth={2.4} /></span>}
             {photoBusy && <span className="profile-avatar-spin" aria-hidden="true" />}
           </button>
           <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickPhoto} />
@@ -46,7 +46,7 @@ export default function ProfileTab({ onOpenHelp, onOpenTeam, onOpenCrews, user, 
           <div className="profile-name">{user.nickname || name}</div>
           {user.nickname && <div className="profile-email">{name}</div>}
           {email && <div className="profile-email">{email}</div>}
-          <div className="profile-role">YA Leader</div>
+          <div className="profile-role">{user.viewOnly ? 'Viewer · view-only' : 'YA Leader'}</div>
         </div>
 
         <section className="home-section">
@@ -54,19 +54,19 @@ export default function ProfileTab({ onOpenHelp, onOpenTeam, onOpenCrews, user, 
             <h2>About you</h2>
           </div>
           <div className="attr-group">
-            <NicknameRow user={user} onSave={onSaveProfile} />
+            {!user.viewOnly && <NicknameRow user={user} onSave={onSaveProfile} />}
             <PickerRow label="Crew" value={CREW_LABEL[myCrew || 'all']} allowEmpty={false}
               options={CREW_OPTIONS.map(o => o.label)}
               onChange={label => onChooseCrew(CREW_OPTIONS.find(o => o.label === label)?.key || 'all')} />
           </div>
           <p className="profile-hint attr-hint">
-            Your nickname is only used in this app. Home and People focus on your crew.
+            {user.viewOnly ? 'Home and People focus on the crew you pick.' : 'Your nickname is only used in this app. Home and People focus on your crew.'}
           </p>
         </section>
 
-        <MessageEditor user={user} myCrew={myCrew} onSave={onSaveMessage} />
+        {!user.viewOnly && <MessageEditor user={user} myCrew={myCrew} onSave={onSaveMessage} />}
 
-        <NotificationsSection myCrew={myCrew} />
+        {!user.viewOnly && <NotificationsSection myCrew={myCrew} />}
 
         {onOpenHelp && (
           <section className="home-section">

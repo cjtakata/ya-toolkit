@@ -12,6 +12,7 @@ import HelpGuide from './components/HelpGuide.jsx'
 import TeamStats from './components/TeamStats.jsx'
 import CrewCoverage from './components/CrewCoverage.jsx'
 import { MINISTRY } from '../ministry.config.js'
+import { Eye } from 'lucide-react'
 import InstallPage from './components/InstallPage.jsx'
 import { INSTALL_PATH, isStandalone } from './components/install.js'
 import { badgeCount } from './components/badgeCount.js'
@@ -339,6 +340,7 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
     card:         person ? cardsByPerson[person.id] || null : null,
     onCardAction: handleCardAction,
     isAdmin:      !!user.isAdmin,
+    readOnly:     !!user.viewOnly,
     backLabel:    tab === 'home' ? 'Home' : 'People',
     onClose:      () => setSelectedId(null),
     onSave:       handleSave,
@@ -350,6 +352,9 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
         tab={tab} onChange={changeTab} user={user} badge={waitingCount}
         onOpenProfile={() => setProfileOpen(true)}
       />
+      {user.viewOnly && (
+        <div className="viewonly-bar" role="note"><Eye size={14} /> View-only access: you can look around, but changes are turned off.</div>
+      )}
       <div className="app-body">
         <div className={`tab-view${tab === 'home' ? '' : ' tab-hidden'}`}>
           <HomeTab
@@ -359,7 +364,7 @@ function AuthenticatedApp({ user, onUserChange, onLogout }) {
             cardsError={cardsError}
             onRefresh={() => loadCards(true)}
             onPullRefresh={refreshAll}
-            onClaim={claimFromList}
+            onClaim={user.viewOnly ? null : claimFromList}
             busyCard={busyCard}
             myCrew={myCrew}
             currentUser={currentUser}

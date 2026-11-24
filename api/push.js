@@ -14,7 +14,7 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      if (!pushReady()) return res.json({ enabled: false })
+      if (!pushReady() || user.role === 'viewer') return res.json({ enabled: false })
       return res.json({ enabled: true, publicKey: process.env.VAPID_PUBLIC_KEY, devices: (await devicesFor(me)).length })
     }
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
