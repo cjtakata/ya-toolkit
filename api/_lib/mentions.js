@@ -6,7 +6,7 @@
 import { pcoFetch } from './pco.js'
 import { isLeaderPerson } from './auth.js'
 import { clearstreamReady, inQuietHours, loadLeaders, recipients, mentionText, sendText } from './texting.js'
-import { pushReady, pushTo, badgeContext, storeReady, addUnreadMention } from './push.js'
+import { pushReady, pushTo, badgeContext, storeReady, addUnreadMention, startLog, logLine, saveLog } from './push.js'
 import { MINISTRY } from '../../ministry.config.js'
 
 export const CREWS = Object.fromEntries(MINISTRY.crews.map(c => [c.key, c.label]))
@@ -64,16 +64,38 @@ export async function notifyMentions(payload) {
     }),
   ])
 
+  // The notification log needs the names of everyone this reaches.
+  let log = null
+  if (storeReady()) {
+    await lookups().catch(() => {})
+    if (leaders && guest) {
+      const labels = Object.fromEntries(MINISTRY.crews.map(c => [c.key, c.label]))
+      const names = [...payload.leaderIds.map(id => leaders.find(l => l.id === String(id))?.name).filter(Boolean),
+        ...payload.crews.map(c => labels[c])]
+      const tagged = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0] || 'someone'
+      log = startLog('mention', `${payload.authorName.split(' ')[0]} mentioned ${tagged} on ${guest}`,
+        { personId: String(payload.personId), urgent: !!payload.urgent })
+    }
+  }
+  const reached = log ? pushRecipients(leaders, payload).map(id => leaders.find(l => l.id === id)) : []
+  if (log && !wantPush && pushReady()) for (const l of reached) logLine(log, l, { channel: 'push', result: 'held' })
+
   const texting = direct
-    ? lookups().then(() => textDirectly(payload, leaders, guest)).then(r => ({ ...r, via: 'clearstream' }))
+    ? lookups().then(() => textDirectly(payload, leaders, guest, log)).then(r => ({ ...r, via: 'clearstream' }))
         .catch(err => { console.error('mention texting failed:', err.message); return { sent: false, via: 'clearstream', reason: err.message } })
-    : notifyViaZapier(payload)
+    : notifyViaZapier(payload).then(r => {
+        // Zapier works out the same leaders itself; log what we handed over.
+        for (const l of reached) logLine(log, l, { channel: 'text', result: r.sent ? 'zapier' : 'failed',
+          detail: r.sent ? (quiet && !payload.urgent ? 'held until 8am' : '') : r.reason })
+        return r
+      })
   const pushing = wantPush
-    ? lookups().then(() => pushMentions(payload, leaders, guest))
+    ? lookups().then(() => pushMentions(payload, leaders, guest, log))
         .catch(err => { console.error('mention push failed:', err.message); return null })
     : Promise.resolve(null)
 
   const [text, push] = await Promise.all([texting, pushing])
+  await saveLog(log).catch(err => console.error('notification log failed:', err.message))
   return push ? { ...text, pushed: push.leaders } : text
 }
 
@@ -103,7 +125,7 @@ export function pushRecipients(leaders, { leaderIds, crews, authorId }) {
   return [...ids].filter(id => leaders.some(l => l.id === id))
 }
 
-async function pushMentions({ noteId, personId, authorId, authorName, leaderIds, crews, quote }, leaders, guest) {
+async function pushMentions({ noteId, personId, authorId, authorName, leaderIds, crews, quote }, leaders, guest, log) {
   const labels = Object.fromEntries(MINISTRY.crews.map(c => [c.key, c.label]))
   const direct = new Set(leaderIds.map(String))
   const author = authorName.trim().split(/\s+/)[0] || authorName
@@ -127,14 +149,16 @@ async function pushMentions({ noteId, personId, authorId, authorName, leaderIds,
       title: `${author} mentioned ${via}`, body,
       url: `/people#/person/${personId}`, tag: `mention-${noteId}`,
       badgeFor: countFor && name ? d => countFor(name, d.crew) : undefined,
+      log, logName: name,
     }).catch(err => { console.error('push to', id, 'failed:', err.message); return 0 }))
   }
   const reached = (await Promise.all(sends)).filter(n => n > 0).length
   return { leaders: reached }
 }
 
-async function textDirectly({ personId, authorId, authorName, leaderIds, crews, quote }, leaders, guest) {
+async function textDirectly({ personId, authorId, authorName, leaderIds, crews, quote }, leaders, guest, log) {
   const { to, noPhone } = recipients(leaders, { leaderIds, crews, authorId })
+  for (const name of noPhone) logLine(log, leaders.find(l => l.name === name), { channel: 'text', result: 'no-mobile' })
   if (!to.length) return { sent: false, reason: 'nobody-to-text', noPhone }
 
   // Test mode: one text to the test number, labelled with who it was for.
@@ -147,6 +171,8 @@ async function textDirectly({ personId, authorId, authorName, leaderIds, crews, 
 
   const results = []
   for (const o of outgoing) results.push({ name: o.name, ...(await sendText(o.mobile, o.body).catch(e => ({ ok: false, error: e.message }))) })
+  if (testTo) for (const r of to) logLine(log, r.leader, { channel: 'text', result: results[0]?.ok ? 'test-number' : 'failed' })
+  else results.forEach((r, i) => logLine(log, to[i].leader, { channel: 'text', result: r.ok ? 'sent' : 'failed', detail: r.ok ? '' : `error ${r.status || r.error || ''}`.trim() }))
   const failed = results.filter(r => !r.ok)
   console.log('mention texts:', JSON.stringify({ test: !!testTo, sent: results.length - failed.length,
     failed: failed.map(f => ({ name: f.name, status: f.status, error: f.error })), noPhone }))

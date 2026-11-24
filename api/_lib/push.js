@@ -9,7 +9,7 @@
 //   VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY  the app's own push key pair
 //   BLOB_READ_WRITE_TOKEN                 set by connecting the Blob store
 import * as webpush from 'web-push'
-import { put, get } from '@vercel/blob'
+import { put, get, list } from '@vercel/blob'
 import { listCards } from './cards.js'
 import { peopleById } from './person.js'
 import { badgeCount } from '../../src/components/badgeCount.js'
@@ -33,6 +33,15 @@ const blobStore = {
     await put(path, JSON.stringify(obj), {
       access: 'private', contentType: 'application/json', addRandomSuffix: false, allowOverwrite: true,
     })
+  },
+  async list(prefix) {
+    const out = []
+    let cursor
+    do {
+      const r = await list({ prefix, cursor, limit: 1000 })
+      out.push(...r.blobs.map(b => b.pathname)); cursor = r.hasMore ? r.cursor : null
+    } while (cursor)
+    return out
   },
 }
 const store = () => _store || blobStore
@@ -100,7 +109,10 @@ export async function pushTo(pcoId, note) {
   if (!pushReady()) return 0
   configure()
   const devices = await devicesFor(pcoId)
-  if (!devices.length) return 0
+  if (!devices.length) {
+    logLine(note.log, { id: pcoId, name: note.logName }, { channel: 'push', result: 'off' })
+    return 0
+  }
   // Each device gets its own badge number (its crew choice can differ):
   // guests waiting on them + their unread mentions.
   const unread = note.badgeFor ? (await unreadMentions(pcoId)).length : 0
@@ -127,6 +139,10 @@ export async function pushTo(pcoId, note) {
     const left = (await devicesFor(pcoId)).filter(d => !gone.includes(d.endpoint))
     await saveDevices(pcoId, left).catch(() => {})
   }
+  logLine(note.log, { id: pcoId, name: note.logName }, {
+    channel: 'push', result: reached ? 'sent' : 'failed',
+    detail: `${reached} of ${devices.length} device${devices.length === 1 ? '' : 's'}`,
+  })
   return reached
 }
 
@@ -173,4 +189,35 @@ export async function markMentionsRead(pcoId, personId) {
   const left = list.filter(m => String(m.personId) !== String(personId))
   if (left.length !== list.length) await kvWrite(unreadPath(pcoId), { unread: left })
   return left
+}
+
+// ── Notification log ────────────────────────────────────────────────────
+// One entry per thing the app notified leaders about (a mention, a new guest,
+// a test), with what each leader got on each channel. Saved as its own file
+// (log/<yyyy-mm-dd>/<time>-<rand>.json), so simultaneous ones never clash.
+// Admins read the last 14 days in the app (Profile → Leader notifications).
+//   channel: 'push' | 'text'
+//   result:  'sent' | 'off' (notifications off) | 'failed' | 'held' (quiet hours)
+//            | 'no-mobile' | 'zapier' (handed to the Zapier workflow) | 'test-number'
+export function startLog(kind, summary, extra = {}) {
+  return { kind, summary, at: new Date().toISOString(), ...extra, leaders: {} }
+}
+export function logLine(log, leader, line) {
+  if (!log || !leader?.id) return
+  const e = log.leaders[leader.id] ||= { id: String(leader.id), name: leader.name || '', lines: [] }
+  if (leader.name && !e.name) e.name = leader.name
+  e.lines.push(line)
+}
+export async function saveLog(log) {
+  if (!log || !storeReady() || !Object.keys(log.leaders).length) return
+  const day = log.at.slice(0, 10)
+  await kvWrite(`log/${day}/${log.at.replace(/[:.]/g, '-')}-${Math.random().toString(36).slice(2, 8)}.json`,
+    { ...log, leaders: Object.values(log.leaders) })
+}
+export async function readLog(days = 14, max = 200) {
+  if (!storeReady() || !store().list) return []
+  const prefixes = Array.from({ length: days }, (_, i) => `log/${new Date(Date.now() - i * 86_400_000).toISOString().slice(0, 10)}/`)
+  const paths = (await Promise.all(prefixes.map(p => store().list(p).catch(() => [])))).flat()
+    .sort().reverse().slice(0, max)
+  return (await Promise.all(paths.map(p => kvRead(p)))).filter(Boolean)
 }
