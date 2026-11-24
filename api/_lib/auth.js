@@ -78,9 +78,10 @@ export async function isLeaderPerson(id) {
 // Can assign guests to leaders, remove guests from follow-up, and grant or
 // remove Leader status. PCO person ids in YA_ADMIN_PCO_IDS (comma-separated);
 // until that's set, MINISTRY.defaultAdminIds (ministry.config.js).
+export const adminIds = () =>
+  String(process.env.YA_ADMIN_PCO_IDS || MINISTRY.defaultAdminIds.join(',')).split(',').map(s => s.trim()).filter(Boolean)
 export function isAdmin(user) {
-  const ids = String(process.env.YA_ADMIN_PCO_IDS || MINISTRY.defaultAdminIds.join(',')).split(',').map(s => s.trim())
-  return !!user && ids.includes(String(user.id))
+  return !!user && adminIds().includes(String(user.id))
 }
 
 export async function requireAuth(req, res) {

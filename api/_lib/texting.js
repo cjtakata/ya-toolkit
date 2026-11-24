@@ -112,12 +112,12 @@ export function recipients(leaders, { leaderIds, crews, authorId }) {
 }
 
 // One text through Clearstream. Retries once on rate limit / server error.
-export async function sendText(to, body) {
+export async function sendText(to, body, header = T.mentionHeader) {
   for (let attempt = 0; attempt < 2; attempt++) {
     const r = await fetch(CLEARSTREAM_TEXTS, {
       method: 'POST',
       headers: { 'X-Api-Key': process.env.CLEARSTREAM_API_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ to, from: T.from, text_header: T.mentionHeader, text_body: body }),
+      body: JSON.stringify({ to, from: T.from, text_header: header, text_body: body }),
       signal: AbortSignal.timeout(8000),
     })
     if (r.ok) return { ok: true, status: (await r.json().catch(() => ({})))?.data?.status || null }

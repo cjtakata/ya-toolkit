@@ -37,7 +37,7 @@ export default async function handler(req, res) {
       const reached = await pushTo(me, {
         badgeFor: countFor ? d => countFor(user.global_name, d.crew) : undefined,
         title: 'Notifications are on',
-        body: `${first ? `${first}, you'll` : "You'll"} get a notification here when someone @mentions you.`,
+        body: `${first ? `${first}, you'll` : "You'll"} get a notification here for new guests in your crew and @mentions.`,
         url: '/people', tag: 'test',
       })
       return res.json({ ok: true, reached })

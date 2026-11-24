@@ -36,6 +36,17 @@ const blobStore = {
   },
 }
 const store = () => _store || blobStore
+const storeReady = () => !!(_store || process.env.BLOB_READ_WRITE_TOKEN)
+
+// First caller for a key gets true, later ones false (e.g. "this card's
+// leaders were already told"). Without storage it can't remember: true.
+export async function firstTime(key, info = {}) {
+  if (!storeReady()) return true
+  const path = `once/${key}.json`
+  if (await store().read(path).catch(() => null)) return false
+  await store().write(path, { at: new Date().toISOString(), ...info })
+  return true
+}
 const pathFor = pcoId => `push/${pcoId}.json`
 
 export async function devicesFor(pcoId) {

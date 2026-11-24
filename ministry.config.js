@@ -60,11 +60,20 @@ export const MINISTRY = {
   texting: {
     from: '+14254751237',          // the YA line texts are sent from
     mentionHeader: 'YA Mention',   // shown in front of the text: "YA Mention: ..."
+    newGuestHeader: 'YA New Guest',
     maxRecipients: 25,             // per note
     // Mentions written in these hours are held until morning, unless the
     // writer ticks "Send now".
     quietHours: { from: 21, until: 8, timeZone: 'America/Los_Angeles' },
   },
+
+  // A new guest with no Crew gets one from their age (inclusive). Under the
+  // lowest age, or no birthdate: no crew, and the admins are told instead.
+  crewByAge: [
+    { min: 18, max: 22, crew: 'college' },
+    { min: 23, max: 27, crew: 'earlycareer' },
+    { min: 28, max: 200, crew: 'youngpro' },
+  ],
 
   // The text a leader sends a new guest unless they've saved their own.
   // {first} guest's first name · {me} leader's first name · {crew} "College Life crew"
