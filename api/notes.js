@@ -40,7 +40,8 @@ function parseNote(raw) {
 }
 
 export default async function handler(req, res) {
-  const user = await requireAuth(req, res)
+  // Viewers may post notes (no @mentions); every other change stays refused.
+  const user = await requireAuth(req, res, { viewerMayPost: true })
   if (!user) return
 
   try {
@@ -73,7 +74,9 @@ export default async function handler(req, res) {
 
     // ── Create a note on a person ─────────────────────────────
     if (req.method === 'POST') {
-      const { personId, body, followup, mentions, urgent } = req.body || {}
+      const viewer = user.role === 'viewer'
+      const { personId, body, mentions, urgent } = req.body || {}
+      const followup = !viewer && req.body?.followup
       if (!/^\d+$/.test(String(personId))) {
         return res.status(400).json({ error: 'Invalid person id' })
       }
@@ -103,7 +106,8 @@ export default async function handler(req, res) {
 
       // @mentions → text the leaders (Clearstream directly, or the Zapier "YA Mention" workflow).
       // The note is already saved; a failed notification only gets logged.
-      const tagged = await checkMentions(text, mentions, user.id).catch(err => {
+      // Viewers' notes don't @mention anyone (no texts or pushes from them).
+      const tagged = viewer ? { leaders: [], crews: [] } : await checkMentions(text, mentions, user.id).catch(err => {
         console.error('mention check failed:', err.message)
         return { leaders: [], crews: [] }
       })
