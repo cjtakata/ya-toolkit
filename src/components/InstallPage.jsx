@@ -99,9 +99,9 @@ export default function InstallPage() {
   )
 }
 
-function Step({ n, icon, title, children, highlight }) {
+function Step({ n, icon, title, children }) {
   return (
-    <li className={`install-step${highlight ? ' install-step-notify' : ''}`}>
+    <li className="install-step">
       <span className="install-num" aria-hidden="true">{n}</span>
       <div className="install-step-body">
         <div className="install-step-title">{title}</div>
@@ -124,7 +124,7 @@ function Done({ title, text }) {
 // The last step everywhere: turn on notifications inside the app.
 function NotifyStep({ n }) {
   return (
-    <Step n={n} icon={<Bell size={20} />} title="Turn on notifications" highlight>
+    <Step n={n} icon={<Bell size={20} />} title="Turn on notifications">
       In the app, tap <b>your photo</b> (top right), then under <b>Notifications</b> tap <b>Turn on notifications</b> and
       choose <b>Allow</b>. Tap <b>Send a test</b> to check it works. This is how you'll hear about new guests and @mentions.
     </Step>
