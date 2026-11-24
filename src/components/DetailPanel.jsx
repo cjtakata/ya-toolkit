@@ -80,7 +80,8 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
   const [confirmText, setConfirmText] = useState(false)   // "Did you send it?" after opening Messages
 
   const handleCopyLink = useCallback(() => {
-    navigator.clipboard.writeText(window.location.href).then(() => {
+    // The short guest link: it opens this person and gets the guest link preview.
+    navigator.clipboard.writeText(`${window.location.origin}/p/${person.id}`).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
