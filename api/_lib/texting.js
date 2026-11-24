@@ -16,7 +16,9 @@ import { MINISTRY } from '../../ministry.config.js'
 const CLEARSTREAM_TEXTS = 'https://api.getclearstream.com/v1/texts'
 const T = MINISTRY.texting
 
-export const clearstreamReady = () => !!process.env.CLEARSTREAM_API_KEY
+// Texting switched off in ministry.config.js: no texts, no Zapier hand-off.
+export const textingOn = () => T.enabled !== false
+export const clearstreamReady = () => textingOn() && !!process.env.CLEARSTREAM_API_KEY
 
 const asText = v => (v === null || v === undefined ? '' : String(v).trim())
 

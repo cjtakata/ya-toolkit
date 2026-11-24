@@ -20,6 +20,7 @@ const RESULT = {
   },
   text: {
     sent:          ['ok',    'Text sent'],
+    off:           ['muted', 'Texts off'],
     zapier:        ['info',  'Text via Zapier'],
     'no-mobile':   ['warn',  'No mobile for texts'],
     failed:        ['bad',   'Text failed'],
@@ -138,8 +139,8 @@ export default function LeaderNotifications({ people = [] }) {
       </section>
 
       <p className="profile-hint">
-        Push is the app’s own notification. Texts go out through Zapier until the app’s Clearstream texting is switched on,
-        so “Text via Zapier” means it was handed to Zapier. Check Zapier’s run history to confirm delivery.
+        Push is the app’s own notification, and right now the only one: texting is switched off, so “Texts off” means
+        no text was sent. A leader with notifications off hears nothing until they open the app (mentions wait on their Home).
         Only notifications sent after this log was added appear here.
       </p>
     </div>
