@@ -1262,3 +1262,6 @@ a.notif-go { text-decoration: none; }
 .mention-row-quote { color: var(--muted); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .mention-row-time { flex-shrink: 0; font-size: var(--fs-footnote); color: var(--muted); }
 #home-mentions { margin-bottom: 18px; }
+
+.install-step-notify { border-color: var(--primary-line); background: var(--primary-light); }
+.install-step-notify .install-step-icon { background: var(--surface); }

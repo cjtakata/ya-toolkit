@@ -39,7 +39,7 @@ export default function InstallPage() {
 
         {kind === 'installed' && <>
           <Done title="Installed" text="Open YA Toolkit from your home screen or app list and sign in." />
-          <AfterSteps />
+          <NotifyAfter />
         </>}
 
         {kind === 'in-app' && <>
@@ -65,8 +65,8 @@ export default function InstallPage() {
             <Step n={4} icon={<Smartphone size={20} />} title="Open YA Toolkit from your home screen">
               Sign in with your email. You only need to do this once.
             </Step>
+            <NotifyStep n={5} />
           </ol>
-          <AfterSteps />
         </>}
 
         {kind === 'prompt' && <>
@@ -74,7 +74,7 @@ export default function InstallPage() {
             <Download size={18} /> Install YA Toolkit
           </button>
           <p className="install-note">Your browser will ask you to confirm. It adds an icon to your home screen or app list.</p>
-          <AfterSteps />
+          <NotifyAfter />
         </>}
 
         {kind === 'android' && <>
@@ -82,8 +82,8 @@ export default function InstallPage() {
             <Step n={1} icon={<span className="install-dots">⋮</span>} title="Open your browser's menu">The three dots at the top right.</Step>
             <Step n={2} icon={<SquarePlus size={20} />} title="Tap “Install app” or “Add to Home screen”" />
             <Step n={3} icon={<Smartphone size={20} />} title="Open YA Toolkit from your home screen">Sign in with your email.</Step>
+            <NotifyStep n={4} />
           </ol>
-          <AfterSteps />
         </>}
 
         {kind === 'desktop' && <>
@@ -99,9 +99,9 @@ export default function InstallPage() {
   )
 }
 
-function Step({ n, icon, title, children }) {
+function Step({ n, icon, title, children, highlight }) {
   return (
-    <li className="install-step">
+    <li className={`install-step${highlight ? ' install-step-notify' : ''}`}>
       <span className="install-num" aria-hidden="true">{n}</span>
       <div className="install-step-body">
         <div className="install-step-title">{title}</div>
@@ -121,10 +121,18 @@ function Done({ title, text }) {
   )
 }
 
-function AfterSteps() {
+// The last step everywhere: turn on notifications inside the app.
+function NotifyStep({ n }) {
   return (
-    <p className="install-after"><Bell size={15} /><span>Then turn on notifications: tap your photo, then <b>Notifications → Turn on</b>.</span></p>
+    <Step n={n} icon={<Bell size={20} />} title="Turn on notifications" highlight>
+      In the app, tap <b>your photo</b> (top right), then under <b>Notifications</b> tap <b>Turn on notifications</b> and
+      choose <b>Allow</b>. Tap <b>Send a test</b> to check it works. This is how you'll hear about new guests and @mentions.
+    </Step>
   )
+}
+function NotifyAfter() {
+  // After the one-tap install (step 1), notifications are step 2.
+  return <ol className="install-steps"><NotifyStep n={2} /></ol>
 }
 
 function CopyButton({ copied, onCopy }) {
