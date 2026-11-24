@@ -1241,3 +1241,11 @@ a.notif-go { text-decoration: none; }
   font-size: var(--fs-footnote); font-weight: var(--fw-semibold); text-align: center; }
 .fu-readonly .fu-btn-row, .fu-readonly .fu-log, .fu-readonly .fu-btn-release,
 .fu-readonly .fu-inline-link, .fu-readonly .fu-btn-takeover { display: none; }
+
+/* Note likes */
+.note-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.like-btn { display: inline-flex; align-items: center; gap: 3px; border: 0; background: none; padding: 2px 4px; margin-right: -4px;
+  border-radius: var(--r-pill); color: var(--muted); font: inherit; font-size: var(--fs-caption); font-weight: var(--fw-semibold); cursor: pointer; }
+.like-btn:hover { color: var(--red-ink); }
+.like-btn.liked { color: var(--red-ink); }
+.note-likers { display: block; margin-top: 2px; font-size: var(--fs-caption); color: var(--muted); }
