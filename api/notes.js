@@ -1,8 +1,8 @@
 import { requireAuth } from './_lib/auth.js'
 import { pcoFetch } from './_lib/pco.js'
 import { personHistory } from './_lib/cards.js'
-import { checkMentions, notifyMentions } from './_lib/mentions.js'
-import { storeReady, kvRead, kvWrite } from './_lib/push.js'
+import { checkMentions, notifyMentions, recordUnreadMentions } from './_lib/mentions.js'
+import { storeReady, kvRead, kvWrite, unreadMentions, markMentionsRead } from './_lib/push.js'
 import { MINISTRY } from '../ministry.config.js'
 
 // Texting up to 25 leaders one by one can take a few seconds.
@@ -50,6 +50,13 @@ export default async function handler(req, res) {
   try {
     const catId = await getYANoteCategoryId()
 
+    // ── My unread mentions (Home + icon badge) ────────────────
+    // GET /api/notes?mentions=1 → [{ noteId, personId, guest, author, quote, at }]
+    if (req.method === 'GET' && req.query?.mentions) {
+      res.setHeader('Cache-Control', 'private, no-store')
+      return res.json(await unreadMentions(String(user.id)))
+    }
+
     // ── List notes for a person ───────────────────────────────
     if (req.method === 'GET') {
       const { personId } = req.query
@@ -80,6 +87,13 @@ export default async function handler(req, res) {
       const feed = [...notes, ...history.map(h => ({ ...h, createdAt: h.at }))]
         .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
       return res.json(feed)
+    }
+
+    // ── Mark my mentions about a guest as read (opened them) ──
+    // POST { action: 'read', personId } → what's still unread
+    if (req.method === 'POST' && req.body?.action === 'read') {
+      if (!/^\d+$/.test(String(req.body.personId))) return res.status(400).json({ error: 'Invalid person id' })
+      return res.json(await markMentionsRead(String(user.id), String(req.body.personId)))
     }
 
     // ── Like / unlike a note ──────────────────────────────────
@@ -142,7 +156,7 @@ export default async function handler(req, res) {
       })
       let notified = null
       if (tagged.leaders.length || tagged.crews.length) {
-        const r = await notifyMentions({
+        const mention = {
           noteId:     n.id,
           personId:   String(personId),
           authorId:   String(user.id),
@@ -151,7 +165,10 @@ export default async function handler(req, res) {
           crews:      tagged.crews.map(c => c.key),
           urgent:     urgent === true,   // "Send now": skip quiet hours (9pm–8am Pacific)
           quote:      text,              // what the leaders' text quotes (the note minus "[Author]")
-        })
+        }
+        // Unread first, so the pushes below already count it in the badge.
+        await recordUnreadMentions({ ...mention, noteId: n.id }).catch(err => console.error('unread mention failed:', err.message))
+        const r = await notifyMentions(mention)
         notified = { ...r, leaders: tagged.leaders.map(l => l.name), crews: tagged.crews.map(c => c.label) }
       }
 

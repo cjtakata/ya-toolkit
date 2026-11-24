@@ -1249,3 +1249,16 @@ a.notif-go { text-decoration: none; }
 .like-btn:hover { color: var(--red-ink); }
 .like-btn.liked { color: var(--red-ink); }
 .note-likers { display: block; margin-top: 2px; font-size: var(--fs-caption); color: var(--muted); }
+
+/* Home: unread mentions */
+.mention-list { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1.5px solid var(--primary-line); border-radius: var(--r-lg); overflow: hidden; }
+.mention-list li + li { border-top: 1px solid var(--border); }
+.mention-row { display: flex; gap: 10px; align-items: flex-start; width: 100%; border: 0; background: none; text-align: left;
+  padding: 11px 14px; font: inherit; font-size: var(--fs-subhead); color: var(--text); cursor: pointer; }
+.mention-row:hover { background: var(--bg); }
+.mention-row-icon { flex-shrink: 0; color: var(--primary); margin-top: 2px; }
+.mention-row-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; line-height: 1.4; }
+.mention-row-body b { font-weight: var(--fw-semibold); }
+.mention-row-quote { color: var(--muted); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.mention-row-time { flex-shrink: 0; font-size: var(--fs-footnote); color: var(--muted); }
+#home-mentions { margin-bottom: 18px; }

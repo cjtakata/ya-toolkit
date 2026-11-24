@@ -1,9 +1,10 @@
 import usePullToRefresh from './usePullToRefresh.jsx'
 import { useMemo, useState } from 'react'
-import { UserRoundSearch, Hand, Clock, MessageCircleHeart, PartyPopper, RefreshCw } from 'lucide-react'
+import { UserRoundSearch, Hand, Clock, MessageCircleHeart, PartyPopper, RefreshCw, AtSign } from 'lucide-react'
 import CardRow from './CardRow.jsx'
 import InstallBanner from './InstallBanner.jsx'
 import { inCrew } from './badgeCount.js'
+import { timeAgo } from './cardMeta.js'
 import { CREW_LABEL } from './listMeta.js'
 
 const PREVIEW = 6
@@ -23,7 +24,7 @@ const byNewest = key => (a, b) => (b[key] || '').localeCompare(a[key] || '')
 //   Who filled out a card → who claimed them → have they been texted?
 export default function HomeTab({
   greetName, cards, cardsError, cardsLoading, onRefresh, myCrew = 'all', currentUser,
-  selectedId, onSelect, onSeeAll, onClaim, busyCard, onPullRefresh,
+  selectedId, onSelect, onSeeAll, onClaim, busyCard, onPullRefresh, mentions = [],
 }) {
   const ptr = usePullToRefresh(onPullRefresh)
   const [showAllDone, setShowAllDone] = useState(false)
@@ -63,6 +64,26 @@ export default function HomeTab({
         </header>
 
         <InstallBanner />
+
+        {mentions.length > 0 && (
+          <section className="home-section" id="home-mentions">
+            <div className="home-section-head"><h2>Mentioned you · {mentions.length}</h2></div>
+            <ul className="mention-list">
+              {mentions.map(m => (
+                <li key={m.noteId}>
+                  <button className="mention-row" onClick={() => onSelect(m.personId)}>
+                    <AtSign size={16} className="mention-row-icon" />
+                    <span className="mention-row-body">
+                      <span><b>{(m.author || 'Someone').split(' ')[0]}</b> mentioned you on <b>{m.guest}</b></span>
+                      {m.quote && <span className="mention-row-quote">“{m.quote}”</span>}
+                    </span>
+                    <span className="mention-row-time">{timeAgo(m.at)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
 
         <div className="stat-grid">

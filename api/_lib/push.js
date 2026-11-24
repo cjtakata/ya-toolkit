@@ -101,9 +101,12 @@ export async function pushTo(pcoId, note) {
   configure()
   const devices = await devicesFor(pcoId)
   if (!devices.length) return 0
-  // Each device gets its own badge number (its crew choice can differ).
+  // Each device gets its own badge number (its crew choice can differ):
+  // guests waiting on them + their unread mentions.
+  const unread = note.badgeFor ? (await unreadMentions(pcoId)).length : 0
   const payloadFor = d => {
-    const badge = note.badgeFor ? note.badgeFor(d) : undefined
+    const waiting = note.badgeFor ? note.badgeFor(d) : undefined
+    const badge = Number.isInteger(waiting) ? waiting + unread : undefined
     return JSON.stringify({
       title: note.title, body: note.body || '', url: note.url || '/people', tag: note.tag || undefined,
       ...(Number.isInteger(badge) ? { badge } : {}),
@@ -144,4 +147,30 @@ export async function badgeContext() {
   const people = ids.length ? await peopleById(ids) : {}
   const withCrew = cards.map(c => ({ ...c, person: { list: people[c.personId]?.list || 'unassigned' } }))
   return (me, crew) => badgeCount(withCrew, { me, crew })
+}
+
+// ── Unread mentions ─────────────────────────────────────────────────────
+// mentions/<pcoId>.json: { unread: [{ noteId, personId, guest, author, quote, at }] }
+// Added when someone @mentions a leader (or their crew); cleared when that
+// leader opens the guest. Counted in the app-icon badge.
+const MAX_UNREAD = 50
+const unreadPath = pcoId => `mentions/${pcoId}.json`
+export async function unreadMentions(pcoId) {
+  if (!storeReady()) return []
+  return (await kvRead(unreadPath(pcoId)))?.unread || []
+}
+export async function addUnreadMention(pcoIds, entry) {
+  if (!storeReady()) return
+  await Promise.all([...new Set(pcoIds.map(String))].map(async id => {
+    const list = (await unreadMentions(id)).filter(m => m.noteId !== entry.noteId)
+    list.unshift({ ...entry, at: entry.at || new Date().toISOString() })
+    await kvWrite(unreadPath(id), { unread: list.slice(0, MAX_UNREAD) })
+  }))
+}
+// Opening a guest marks every mention about them as read. → what's left
+export async function markMentionsRead(pcoId, personId) {
+  const list = await unreadMentions(pcoId)
+  const left = list.filter(m => String(m.personId) !== String(personId))
+  if (left.length !== list.length) await kvWrite(unreadPath(pcoId), { unread: left })
+  return left
 }
