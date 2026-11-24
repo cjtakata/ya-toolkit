@@ -5,6 +5,7 @@ import { statusClass } from './statusMeta.js'
 import PickerRow from './PickerRow.jsx'
 import Avatar, { initialsOf } from './Avatar.jsx'
 import { timeAgo, duration, shortDate, renderMessage, smsHref } from './cardMeta.js'
+import { visitSummary, shortDate as visitDay } from './attendance.js'
 import { mentionTargets, activeQuery, matchTargets, mentionsInText, splitMentions, inQuietHours } from './mentions.js'
 import { MINISTRY } from '../../ministry.config.js'
 
@@ -315,6 +316,19 @@ export default function DetailPanel({ person, crewOptions = [], statusOptions = 
               <div className="info-item-label">Gender</div>
               <div className="info-item-value">{person.gender || '—'}</div>
             </div>
+            {(() => {
+              const v = visitSummary(person.visits)
+              return <>
+                <div className="info-item">
+                  <div className="info-item-label">Check-ins</div>
+                  <div className="info-item-value">{v ? v.count : person.visits ? 'None yet' : '—'}</div>
+                </div>
+                <div className="info-item">
+                  <div className="info-item-label">Last here</div>
+                  <div className="info-item-value">{v ? visitDay(v.last) : '—'}</div>
+                </div>
+              </>
+            })()}
           </div>
         </div>
 

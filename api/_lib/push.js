@@ -49,6 +49,7 @@ export const storeReady = () => !!(_store || process.env.BLOB_READ_WRITE_TOKEN)
 // Small JSON records in the same private store (e.g. note likes).
 export const kvRead  = path => store().read(path).catch(() => null)
 export const kvWrite = (path, obj) => store().write(path, obj)
+export const kvList  = prefix => (store().list ? store().list(prefix) : Promise.resolve([]))
 
 // First caller for a key gets true, later ones false (e.g. "this card's
 // leaders were already told"). Without storage it can't remember: true.

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Check, LogOut, MessageCircle, Camera, Pencil, ChevronDown, ChevronRight, BookOpen, ChartNoAxesColumn, UsersRound, Bell, BellOff, Send, BellRing } from 'lucide-react'
+import { Check, LogOut, MessageCircle, Camera, Pencil, ChevronDown, ChevronRight, BookOpen, CalendarCheck, ChartNoAxesColumn, UsersRound, Bell, BellOff, Send, BellRing } from 'lucide-react'
 import PickerRow from './PickerRow.jsx'
 import { pushSupport, currentSubscription, turnOn, turnOff, sendTest } from './pushClient.js'
 import { shareInstallLink, INSTALL_PATH } from './install.js'
@@ -9,7 +9,7 @@ import { DEFAULT_MESSAGE, PLACEHOLDERS, renderMessage } from './cardMeta.js'
 import { MINISTRY } from '../../ministry.config.js'
 
 // Profile: who's signed in, which crew the app focuses on, and sign out.
-export default function ProfileTab({ onOpenHelp, onOpenTeam, onOpenCrews, onOpenNotifs, user, myCrew = 'all', onChooseCrew, onLogout, onSaveMessage, onSaveProfile }) {
+export default function ProfileTab({ onOpenHelp, onOpenTeam, onOpenCrews, onOpenNotifs, onOpenAttendance, user, myCrew = 'all', onChooseCrew, onLogout, onSaveMessage, onSaveProfile }) {
   const name     = user.global_name || user.username || 'Leader'
   const initials = initialsOf(name)
   const email    = user.username && user.username.includes('@') ? user.username : null
@@ -80,6 +80,12 @@ export default function ProfileTab({ onOpenHelp, onOpenTeam, onOpenCrews, onOpen
               {onOpenNotifs && (
                 <button className="settings-row" onClick={onOpenNotifs}>
                   <span className="help-entry"><BellRing size={17} />Leader notifications</span>
+                  <ChevronRight size={16} />
+                </button>
+              )}
+              {onOpenAttendance && (
+                <button className="settings-row" onClick={onOpenAttendance}>
+                  <span className="help-entry"><CalendarCheck size={17} />Attendance</span>
                   <ChevronRight size={16} />
                 </button>
               )}

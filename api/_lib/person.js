@@ -24,11 +24,12 @@ export function normalizePerson(raw, included) {
   const mine = (type, key) => included.filter(i => i.type === type && i.relationships?.[key]?.data?.id === id)
   const primary = list => list.find(x => x.attributes.primary) || list[0]
 
-  let crew = '', status = ''
+  let crew = '', status = '', lastSeen = ''
   for (const d of mine('FieldDatum', 'customizable')) {
     const def = d.relationships?.field_definition?.data?.id
     if (def === FIELD.crew)   crew   = d.attributes.value || ''
     if (def === FIELD.status) status = d.attributes.value || ''
+    if (def === FIELD.lastSeen) lastSeen = d.attributes.value || ''
   }
 
   return {
@@ -44,6 +45,7 @@ export function normalizePerson(raw, included) {
     list:   crewToList(crew),
     crew,
     status,
+    lastSeen,   // raw Last Seen field (see _lib/visits.js)
   }
 }
 
